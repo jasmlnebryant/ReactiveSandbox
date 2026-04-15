@@ -2,7 +2,15 @@ import './WeeklyView.css'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const PALETTE = ['#ECE9BE', '#D9E4E0', '#EEF1DE', '#D7C59F', '#E9ECCF', '#F1F0C8', '#C3C7A6']
+const PALETTE = [
+  'var(--color-5)',
+  'var(--color-3)',
+  'var(--color-1)',
+  'var(--color-7)',
+  'var(--color-2)',
+  'var(--color-4)',
+  'var(--color-6)',
+]
 
 function buildColorMap(assignments) {
   const map = {}
@@ -64,7 +72,9 @@ export default function WeeklyView({ assignments = [], selectedItem, onSelectIte
         <div className="header-nav">
           {!isCurrentWeek && (
             <button className="nav-back-btn" onClick={() => onWeekChange?.(0)} title="Back to current week">
+              {weekOffset > 0 && <span className="nav-back-arrow">←</span>}
               Today
+              {weekOffset < 0 && <span className="nav-back-arrow">→</span>}
             </button>
           )}
           <span className="weekly-range">{formatRange(startOfWeek, endOfWeek)}</span>
@@ -90,8 +100,8 @@ export default function WeeklyView({ assignments = [], selectedItem, onSelectIte
                     <div
                       key={item.id}
                       className={`assignment-card ${isSelected ? 'selected' : ''} ${item.completed ? 'completed' : ''}`}
-                      style={{ '--card-color': color, '--card-border-color': darken(color) }}
-                      onClick={() => onSelectItem?.(item)}
+                      style={{ '--card-color': color }}
+                      onClick={() => onSelectItem?.(isSelected ? null : item)}
                     >
                       <span className="card-name">{item.name}</span>
                       <span className="card-due">

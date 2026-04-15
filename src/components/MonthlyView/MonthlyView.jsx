@@ -2,7 +2,17 @@ import './MonthlyView.css'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const PALETTE = ['#ECE9BE', '#D9E4E0', '#EEF1DE', '#D7C59F', '#E9ECCF', '#F1F0C8', '#C3C7A6']
+const PALETTE = [
+  'var(--color-5)',
+  'var(--color-3)',
+  'var(--color-1)',
+  'var(--color-7)',
+  'var(--color-2)',
+  'var(--color-4)',
+  'var(--color-6)',
+]
+
+const MAX_VISIBLE = 2
 
 function buildColorMap(assignments) {
   const map = {}
@@ -24,7 +34,7 @@ function buildCalendar(year, month) {
   return cells
 }
 
-export default function MonthlyView({ assignments = [], selectedItem, onSelectItem, monthOffset = 0, onMonthChange }) {
+export default function MonthlyView({ assignments = [], selectedItem, onSelectItem, monthOffset = 0, onMonthChange, onSelectDay }) {
   const today = new Date()
   const isCurrentMonth = monthOffset === 0
 
@@ -56,7 +66,9 @@ export default function MonthlyView({ assignments = [], selectedItem, onSelectIt
         <div className="header-nav">
           {!isCurrentMonth && (
             <button className="nav-back-btn" onClick={() => onMonthChange?.(0)} title="Back to current month">
+              {monthOffset > 0 && <span className="nav-back-arrow">←</span>}
               This Month
+              {monthOffset < 0 && <span className="nav-back-arrow">→</span>}
             </button>
           )}
           <span className="monthly-title">{monthLabel}</span>
@@ -66,39 +78,57 @@ export default function MonthlyView({ assignments = [], selectedItem, onSelectIt
       </div>
 
       <div className="monthly-grid">
-        {DAY_LABELS.map(d => (
-          <div key={d} className="month-day-label">{d}</div>
-        ))}
+        <div className="month-day-labels">
+          {DAY_LABELS.map(d => (
+            <div key={d} className="month-day-label">{d}</div>
+          ))}
+        </div>
 
-        {cells.map((day, i) => {
-          const isToday = day === today.getDate() && isCurrentMonth
-          const events = day ? (byDay[day] || []) : []
-          return (
-            <div key={i} className={`month-cell ${day ? '' : 'empty'} ${isToday ? 'today' : ''}`}>
-              {day && (
-                <>
-                  <span className={`month-date-num ${isToday ? 'today-circle' : ''}`}>{day}</span>
-                  <div className="month-cell-events">
-                    {events.map(ev => {
-                      const color = colorMap[ev.courseName] || PALETTE[0]
-                      const isSelected = selectedItem?.id === ev.id
-                      return (
-                        <div
-                          key={ev.id}
-                          className={`month-event ${isSelected ? 'selected' : ''} ${ev.completed ? 'completed' : ''}`}
-                          style={{ '--ev-color': color }}
-                          onClick={() => onSelectItem?.(ev)}
+        <div className="month-cells">
+          {cells.map((day, i) => {
+            const isToday = day === today.getDate() && isCurrentMonth
+            const events = day ? (byDay[day] || []) : []
+            const visibleEvents = events.slice(0, MAX_VISIBLE)
+            const hasMore = events.length > MAX_VISIBLE
+
+            return (
+              <div key={i} className={`month-cell ${day ? '' : 'empty'} ${isToday ? 'today' : ''}`}>
+                {day && (
+                  <>
+                    <span className={`month-date-num ${isToday ? 'today-circle' : ''}`}>{day}</span>
+                    <div className="month-cell-events">
+                      {visibleEvents.map(ev => {
+                        const color = colorMap[ev.courseName] || PALETTE[0]
+                        const isSelected = selectedItem?.id === ev.id
+                        return (
+                          <div
+                            key={ev.id}
+                            className={`month-event ${isSelected ? 'selected' : ''} ${ev.completed ? 'completed' : ''}`}
+                            style={{ '--ev-color': color }}
+                            onClick={() => onSelectItem?.(isSelected ? null : ev)}
+                          >
+                            <span className="month-event-name">{ev.name}</span>
+                          </div>
+                        )
+                      })}
+                      {hasMore && (
+                        <button
+                          className="month-more-btn"
+                          onClick={e => {
+                            e.stopPropagation()
+                            onSelectDay?.({ date: new Date(year, month, day), items: events })
+                          }}
                         >
-                          <span className="month-event-name">{ev.name}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })}
+                          ...
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

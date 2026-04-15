@@ -22,8 +22,26 @@ export default function App() {
   const [editingCourseIndex, setEditingCourseIndex] = useState(null)
   const [editingCourseName, setEditingCourseName] = useState('')
   const [selectedItem, setSelectedItem] = useState(null)
+  const [selectedDay, setSelectedDay] = useState(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthOffset, setMonthOffset] = useState(0)
+
+  // Selecting a card from a panel clears the day view
+  function handleSelectItemFromPanel(item) {
+    setSelectedItem(item)
+    if (item !== null) setSelectedDay(null)
+  }
+
+  // Selecting a day overview (from "...") clears the selected item
+  function handleSelectDay(dayInfo) {
+    setSelectedDay(dayInfo)
+    setSelectedItem(null)
+  }
+
+  // Selecting an item from within the day view keeps selectedDay intact
+  function handleSelectItemFromDay(item) {
+    setSelectedItem(item)
+  }
 
   function handleUploadClick() {
     fileInputRef.current.click()
@@ -110,6 +128,13 @@ export default function App() {
   return (
     <div className="app-layout">
 
+      {/* ── Background blobs ── */}
+      <div className="bg-blobs" aria-hidden="true">
+        <div className="bg-blob-x bg-blob-1"><div className="bg-blob-y" /></div>
+        <div className="bg-blob-x bg-blob-2"><div className="bg-blob-y bg-blob-2y" /></div>
+        <div className="bg-blob-x bg-blob-3"><div className="bg-blob-y bg-blob-3y" /></div>
+      </div>
+
       <input
         ref={fileInputRef}
         type="file"
@@ -125,7 +150,7 @@ export default function App() {
           <WeeklyView
             assignments={assignments}
             selectedItem={selectedItem}
-            onSelectItem={setSelectedItem}
+            onSelectItem={handleSelectItemFromPanel}
             weekOffset={weekOffset}
             onWeekChange={setWeekOffset}
           />
@@ -134,9 +159,10 @@ export default function App() {
           <MonthlyView
             assignments={assignments}
             selectedItem={selectedItem}
-            onSelectItem={setSelectedItem}
+            onSelectItem={handleSelectItemFromPanel}
             monthOffset={monthOffset}
             onMonthChange={setMonthOffset}
+            onSelectDay={handleSelectDay}
           />
         </div>
       </div>
@@ -145,6 +171,8 @@ export default function App() {
       <div className="panel panel-detail">
         <DetailView
           selectedItem={selectedItem}
+          selectedDay={selectedDay}
+          onSelectItem={handleSelectItemFromDay}
           onComplete={item => {
             setAssignments(prev => prev.map(a => a.id === item.id ? { ...a, completed: true } : a))
             setSelectedItem(null)

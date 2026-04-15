@@ -10,8 +10,89 @@
   overflow: hidden;
 }
 
+/* ─── Background Blobs ───────────────────────────────────── */
+.bg-blobs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes bg-blob-x {
+  from { transform: translateX(0px); }
+  to   { transform: translateX(-50px); }
+}
+
+@keyframes bg-blob-y {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(44px); }
+}
+
+.bg-blob-x {
+  position: absolute;
+  pointer-events: none;
+}
+
+.bg-blob-1 {
+  width: 700px;
+  height: 700px;
+  top: -200px;
+  left: -120px;
+  animation: bg-blob-x 11s ease-in-out infinite alternate;
+}
+
+.bg-blob-2 {
+  width: 580px;
+  height: 580px;
+  bottom: -140px;
+  right: -100px;
+  animation: bg-blob-x 9s ease-in-out infinite alternate-reverse;
+}
+
+.bg-blob-3 {
+  width: 460px;
+  height: 460px;
+  top: 30%;
+  left: 35%;
+  animation: bg-blob-x 13s ease-in-out infinite alternate;
+}
+
+.bg-blob-y {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--blob-color) 90%, transparent) 0%,
+    color-mix(in srgb, var(--blob-color) 45%, transparent) 50%,
+    transparent 75%
+  );
+  animation: bg-blob-y 7s ease-in-out infinite alternate;
+}
+
+.bg-blob-2y {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--blob-color) 80%, transparent) 0%,
+    color-mix(in srgb, var(--blob-color) 38%, transparent) 50%,
+    transparent 75%
+  );
+  animation: bg-blob-y 9s ease-in-out infinite alternate-reverse;
+}
+
+.bg-blob-3y {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--blob-color) 65%, transparent) 0%,
+    transparent 68%
+  );
+  animation: bg-blob-y 5s ease-in-out infinite alternate;
+}
+
 /* ── Left column ── */
 .left-column {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--gap);
@@ -21,21 +102,26 @@
 
 /* ── Panel base ── */
 .panel {
-  background-color: var(--surface);
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
+  box-shadow: 0 8px 40px rgba(180, 180, 160, 0.18);
   overflow: hidden;
 }
 
 .panel-weekly {
-  flex: 1;
+  flex: 2;
 }
 
 .panel-monthly {
-  flex: 1;
+  flex: 3;
 }
 
 .panel-detail {
+  position: relative;
+  z-index: 1;
   flex: 0.55;
   display: flex;
   flex-direction: column;
@@ -57,8 +143,8 @@
 .default-prompt {
   position: relative;
   background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 26px;
   padding: 48px 53px 43px;

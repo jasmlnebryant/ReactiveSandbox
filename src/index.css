@@ -16,12 +16,15 @@
   --color-6: #C3C7A6;
   --color-7: #D7C59F;
   --color-6-dark: #3B3C32;
+  --blob-color:   #C3C7A6;
 
   /* Surface */
-  --bg:           #D0D0CA;
-  --surface:      #FFFFFF;
-  --border:       #D9D9D0;
-  --border-radius: 14px;
+  --bg:            #D0D0CA;
+  --surface:       rgba(255, 255, 255, 0.22);
+  --surface-solid: #FFFFFF;
+  --border:        rgba(255, 255, 255, 0.75);
+  --border-inner:  rgba(0, 0, 0, 0.06);
+  --border-radius: 20px;
 
   /* Text */
   --text-primary:   #2B2B26;

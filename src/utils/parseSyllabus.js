@@ -4,10 +4,10 @@
 const ASSIGNMENT_KEYWORDS = /\b(assignment|homework|hw|quiz|exam|midterm|final|paper|essay|project|presentation|reading|lab|report|discussion|response|reflection|draft|submission|due)\b/i
 
 const DATE_PATTERNS = [
-  // "April 20", "Apr 20", "Apr. 20"
+  // "April 20", "Apr 20", "Apr. 20", optionally with year
   /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.\s]+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})?\b/gi,
-  // "4/20", "04/20", "4/20/2026"
-  /\b(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])(?:\/\d{2,4})?\b/g,
+  // "4/20/2026" or "04/20/26" — year REQUIRED to avoid matching fractions/sections
+  /\b(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])\/(\d{2,4})\b/g,
   // "Mon, Apr 20" or "Monday April 20"
   /\b(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?),?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.\s]+(\d{1,2})\b/gi,
 ]
@@ -27,24 +27,34 @@ const MONTH_MAP = {
   dec: 11, december: 11,
 }
 
+const NOW = new Date()
+const MIN_DATE = new Date(NOW.getFullYear() - 1, NOW.getMonth(), NOW.getDate())
+const MAX_DATE = new Date(NOW.getFullYear() + 2, NOW.getMonth(), NOW.getDate())
+
+function isPlausibleDate(d) {
+  return d instanceof Date && !isNaN(d) && d >= MIN_DATE && d <= MAX_DATE
+}
+
 function normalizeDate(raw) {
-  // Try "Month Day" format
-  const wordMatch = raw.match(/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.\s]+(\d{1,2})(?:,?\s*(\d{4}))?/i)
+  // Try "Month Day" or "Month Day, Year" format
+  const wordMatch = raw.match(/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.\s]+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?/i)
   if (wordMatch) {
     const month = MONTH_MAP[wordMatch[1].toLowerCase().slice(0, 3)]
     const day = parseInt(wordMatch[2], 10)
-    const year = wordMatch[3] ? parseInt(wordMatch[3], 10) : new Date().getFullYear()
-    return new Date(year, month, day)
+    const year = wordMatch[3] ? parseInt(wordMatch[3], 10) : NOW.getFullYear()
+    const d = new Date(year, month, day)
+    return isPlausibleDate(d) ? d : null
   }
 
-  // Try numeric "M/D" or "M/D/YYYY"
-  const numMatch = raw.match(/^(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])(?:\/(\d{2,4}))?$/)
+  // Try numeric "M/D/YYYY" (year required — bare M/D is too ambiguous)
+  const numMatch = raw.match(/^(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])\/(\d{2,4})$/)
   if (numMatch) {
     const month = parseInt(numMatch[1], 10) - 1
     const day = parseInt(numMatch[2], 10)
-    let year = numMatch[3] ? parseInt(numMatch[3], 10) : new Date().getFullYear()
+    let year = parseInt(numMatch[3], 10)
     if (year < 100) year += 2000
-    return new Date(year, month, day)
+    const d = new Date(year, month, day)
+    return isPlausibleDate(d) ? d : null
   }
 
   return null
@@ -145,13 +155,11 @@ export function parseSyllabus(text, filename) {
 
     const dates = extractDatesFromLine(line)
 
-    // Also check the next 2 lines for a date if this line has keyword but no date
-    const nearbyLines = [line, lines[i + 1] || '', lines[i + 2] || '']
+    // Check the immediately next line only if this line has no date
     let allDates = [...dates]
     if (allDates.length === 0) {
-      for (const nearby of nearbyLines.slice(1)) {
-        allDates = [...allDates, ...extractDatesFromLine(nearby)]
-      }
+      const nextLine = lines[i + 1] || ''
+      allDates = extractDatesFromLine(nextLine)
     }
 
     if (allDates.length === 0) continue
