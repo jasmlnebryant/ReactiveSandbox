@@ -133,6 +133,9 @@ function extractProfessor(lines) {
       // Clean up trailing junk (email, phone, etc.)
       name = name.split(/[,|;]/)[0].trim()
       name = name.replace(/\s*(email|phone|office|ext\.|@).*$/i, '').trim()
+      // Reject placeholder/header words that are not actual names
+      const NOT_A_NAME = /^(information|name|contact|tbd|tba|n\/a|none|see syllabus|details?|info)\s*$/i
+      if (NOT_A_NAME.test(name)) continue
       if (name.length > 2 && name.length < 60) return name
     }
 

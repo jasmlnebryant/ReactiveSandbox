@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import ReactDOM from 'react-dom'
 import WeeklyView from './components/WeeklyView/WeeklyView'
 import MonthlyView from './components/MonthlyView/MonthlyView'
 import DetailView from './components/DetailView/DetailView'
@@ -14,8 +15,18 @@ function getWeekStart(offsetWeeks = 0) {
 }
 
 export default function App() {
-  const fileInputRef = useRef(null)
-  const [overlayState, setOverlayState] = useState('idle')
+  const fileInputRef    = useRef(null)
+  const settingsBtnRef  = useRef(null)
+  const uploadBtnRef   = useRef(null)
+  const imageInputRef  = useRef(null)
+  const [overlayState, setOverlayState]       = useState('idle')
+  const [settingsOpen, setSettingsOpen]       = useState(false)
+  const [uploadMenuOpen, setUploadMenuOpen]   = useState(false)
+  const [uploadMenuPos, setUploadMenuPos]     = useState(null)
+  const [imageForm, setImageForm]             = useState(null)   // null = closed; object = open
+  const [pendingTodoItems, setPendingTodoItems] = useState([])
+  const [toast, setToast]                     = useState(null)
+  const [settingsPopupPos, setSettingsPopupPos] = useState(null)
   const [processedCourses, setProcessedCourses] = useState([])
   const [assignments, setAssignments] = useState([])
   const [processingLabel, setProcessingLabel] = useState('')
@@ -42,6 +53,44 @@ export default function App() {
   function handleSelectItemFromDay(item) {
     setSelectedItem(item)
   }
+
+  function handleSettingsToggle() {
+    if (!settingsOpen && settingsBtnRef.current) {
+      const rect = settingsBtnRef.current.getBoundingClientRect()
+      setSettingsPopupPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+    }
+    setSettingsOpen(p => !p)
+  }
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    function onOutside(e) {
+      if (settingsBtnRef.current && !settingsBtnRef.current.contains(e.target)) {
+        const popup = document.getElementById('settings-popup')
+        if (!popup || !popup.contains(e.target)) setSettingsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [settingsOpen])
+
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(id)
+  }, [toast])
+
+  useEffect(() => {
+    if (!uploadMenuOpen) return
+    function onOutside(e) {
+      if (uploadBtnRef.current && !uploadBtnRef.current.contains(e.target)) {
+        const menu = document.getElementById('upload-menu-popup')
+        if (!menu || !menu.contains(e.target)) setUploadMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [uploadMenuOpen])
 
   function handleUploadClick() {
     fileInputRef.current.click()
@@ -123,6 +172,75 @@ export default function App() {
     }
   }
 
+  function handleUploadMenuToggle() {
+    if (!uploadMenuOpen && uploadBtnRef.current) {
+      const rect = uploadBtnRef.current.getBoundingClientRect()
+      setUploadMenuPos({ top: rect.bottom + 8, left: rect.left })
+    }
+    setUploadMenuOpen(p => !p)
+  }
+
+  function handleImageFileSelected(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = evt => {
+      setImageForm({
+        imageUrl: evt.target.result,
+        items: [{ id: Date.now(), text: '', dateStr: '' }],
+      })
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  function addImageItem() {
+    setImageForm(f => ({ ...f, items: [...f.items, { id: Date.now(), text: '', dateStr: '' }] }))
+  }
+
+  function removeImageItem(id) {
+    setImageForm(f => ({ ...f, items: f.items.filter(item => item.id !== id) }))
+  }
+
+  function updateImageItem(id, field, value) {
+    setImageForm(f => ({ ...f, items: f.items.map(item => item.id === id ? { ...item, [field]: value } : item) }))
+  }
+
+  function handleImageTaskSubmit() {
+    if (!imageForm) return
+    const valid     = imageForm.items.filter(item => item.text.trim())
+    if (!valid.length) return
+    const toCal     = valid.filter(item => item.dateStr)
+    const toTodo    = valid.filter(item => !item.dateStr)
+
+    if (toCal.length) {
+      setAssignments(prev => [...prev, ...toCal.map(item => ({
+        id: Date.now() + Math.random(),
+        name: item.text.trim(),
+        dueDate: new Date(`${item.dateStr}T12:00:00`),
+        dueTime: '',
+        courseName: 'Personal',
+        professor: 'N/A',
+        instructions: 'N/A',
+        type: 'Task',
+        weight: 'N/A',
+        completed: false,
+        source: 'image',
+        color: 'var(--color-4)',
+      }))])
+    }
+
+    if (toTodo.length) {
+      setPendingTodoItems(toTodo.map(item => ({ text: item.text.trim() })))
+    }
+
+    const calMsg  = toCal.length  ? `${toCal.length} item${toCal.length  !== 1 ? 's' : ''} added to your schedule` : ''
+    const todoMsg = toTodo.length ? `${toTodo.length} item${toTodo.length !== 1 ? 's' : ''} added to your to-do list` : ''
+    setToast([calMsg, todoMsg].filter(Boolean).join(' · ') + '.')
+
+    setImageForm(null)
+  }
+
   const showOverlay = overlayState !== 'done'
 
   return (
@@ -143,46 +261,190 @@ export default function App() {
         style={{ display: 'none' }}
         onChange={handleFilesSelected}
       />
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleImageFileSelected}
+      />
 
-      {/* ── Left column: Weekly + Monthly ── */}
-      <div className="left-column">
-        <div className="panel panel-weekly">
-          <WeeklyView
-            assignments={assignments}
-            selectedItem={selectedItem}
-            onSelectItem={handleSelectItemFromPanel}
-            weekOffset={weekOffset}
-            onWeekChange={setWeekOffset}
-          />
+      {/* ── Top bar ── */}
+      <div className="top-bar">
+        <div className="topbar-left">
+          <button
+            ref={uploadBtnRef}
+            className={`topbar-icon-btn ${uploadMenuOpen ? 'active' : ''}`}
+            title="Upload"
+            onClick={handleUploadMenuToggle}
+          >
+            <UploadIcon />
+          </button>
         </div>
-        <div className="panel panel-monthly">
-          <MonthlyView
-            assignments={assignments}
-            selectedItem={selectedItem}
-            onSelectItem={handleSelectItemFromPanel}
-            monthOffset={monthOffset}
-            onMonthChange={setMonthOffset}
-            onSelectDay={handleSelectDay}
-          />
+        <div className="topbar-right">
+          {/* Palette button is portaled here from DetailView */}
+          <div id="topbar-palette-slot" />
+          <button
+            ref={settingsBtnRef}
+            className={`topbar-icon-btn ${settingsOpen ? 'active' : ''}`}
+            title="Settings"
+            onClick={handleSettingsToggle}
+          >
+            <SettingsIcon />
+          </button>
         </div>
       </div>
 
-      {/* ── Right column: Detail ── */}
-      <div className="panel panel-detail">
-        <DetailView
-          selectedItem={selectedItem}
-          selectedDay={selectedDay}
-          onSelectItem={handleSelectItemFromDay}
-          onComplete={item => {
-            setAssignments(prev => prev.map(a => a.id === item.id ? { ...a, completed: true } : a))
-            setSelectedItem(null)
-          }}
-          onDelete={item => {
-            setAssignments(prev => prev.filter(a => a.id !== item.id))
-            setSelectedItem(null)
-          }}
-        />
-      </div>
+      {/* ── Main row: panels ── */}
+      <div className="main-row">
+
+        {/* Left column: Weekly + Monthly */}
+        <div className="left-column">
+          <div className="panel panel-weekly">
+            <WeeklyView
+              assignments={assignments}
+              selectedItem={selectedItem}
+              onSelectItem={handleSelectItemFromPanel}
+              weekOffset={weekOffset}
+              onWeekChange={setWeekOffset}
+            />
+          </div>
+          <div className="panel panel-monthly">
+            <MonthlyView
+              assignments={assignments}
+              selectedItem={selectedItem}
+              onSelectItem={handleSelectItemFromPanel}
+              monthOffset={monthOffset}
+              onMonthChange={setMonthOffset}
+              onSelectDay={handleSelectDay}
+            />
+          </div>
+        </div>
+
+        {/* Right column: Detail */}
+        <div className="panel panel-detail">
+          <DetailView
+            selectedItem={selectedItem}
+            selectedDay={selectedDay}
+            onSelectItem={handleSelectItemFromDay}
+            onComplete={item => {
+              setAssignments(prev => prev.map(a => a.id === item.id ? { ...a, completed: true } : a))
+              setSelectedItem(null)
+            }}
+            onDelete={item => {
+              setAssignments(prev => prev.filter(a => a.id !== item.id))
+              setSelectedItem(null)
+            }}
+            onEdit={updated => {
+              setAssignments(prev => prev.map(a => a.id === updated.id ? updated : a))
+              setSelectedItem(updated)
+            }}
+            pendingTodoItems={pendingTodoItems}
+            onTodoConsumed={() => setPendingTodoItems([])}
+          />
+        </div>
+
+      </div>{/* ── end main-row ── */}
+
+      {/* ── Settings popup ── */}
+      {settingsOpen && settingsPopupPos && ReactDOM.createPortal(
+        <div
+          id="settings-popup"
+          className="settings-popup"
+          style={{ top: settingsPopupPos.top, right: settingsPopupPos.right }}
+        >
+          <div className="settings-popup-header">
+            <span className="settings-popup-title">Settings</span>
+          </div>
+          <div className="settings-popup-body">
+            <p className="settings-coming-soon">More options coming soon.</p>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Upload menu popup ── */}
+      {uploadMenuOpen && uploadMenuPos && ReactDOM.createPortal(
+        <div
+          id="upload-menu-popup"
+          className="upload-menu-popup"
+          style={{ top: uploadMenuPos.top, left: uploadMenuPos.left }}
+        >
+          <button className="upload-menu-item" onClick={() => { setUploadMenuOpen(false); fileInputRef.current.click() }}>
+            <DocIcon /> Syllabus <span style={{ opacity: 0.5, marginLeft: 4 }}>PDF</span>
+          </button>
+          <button className="upload-menu-item" onClick={() => { setUploadMenuOpen(false); imageInputRef.current.click() }}>
+            <ImageIcon /> To-Do List
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Image task form ── */}
+      {imageForm && (
+        <div className="img-form-overlay">
+          <div className="img-form-card">
+
+            {/* Image preview */}
+            <div className="img-form-preview-wrap">
+              <img className="img-form-preview" src={imageForm.imageUrl} alt="Upload preview" />
+            </div>
+
+            {/* Item list */}
+            <div className="img-form-fields">
+              <div className="img-form-items-header">
+                <span className="img-form-label">Items</span>
+                <span className="img-form-label" style={{ opacity: 0.5 }}>Due date (optional)</span>
+              </div>
+
+              {imageForm.items.map((item, i) => (
+                <div key={item.id} className="img-form-item-row">
+                  <input
+                    className="img-form-input img-form-item-name"
+                    placeholder={`Item ${i + 1}`}
+                    value={item.text}
+                    autoFocus={i === 0}
+                    onChange={e => updateImageItem(item.id, 'text', e.target.value)}
+                  />
+                  <input
+                    className="img-form-input img-form-item-date"
+                    type="date"
+                    value={item.dateStr}
+                    onChange={e => updateImageItem(item.id, 'dateStr', e.target.value)}
+                  />
+                  {imageForm.items.length > 1 && (
+                    <button className="img-item-remove" onClick={() => removeImageItem(item.id)} title="Remove">×</button>
+                  )}
+                </div>
+              ))}
+
+              <button className="img-item-add" onClick={addImageItem}>+ Add item</button>
+            </div>
+
+            {/* Actions */}
+            <div className="img-form-actions">
+              <button
+                className="img-form-btn primary"
+                onClick={handleImageTaskSubmit}
+                disabled={!imageForm.items.some(item => item.text.trim())}
+              >
+                Save to List
+              </button>
+              <button className="img-form-btn secondary" onClick={() => setImageForm(null)}>
+                Cancel
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast notification ── */}
+      {toast && (
+        <div className="toast-notification">
+          {toast}
+        </div>
+      )}
 
       {/* ── Overlay ── */}
       {showOverlay && (
@@ -270,6 +532,44 @@ function PencilIcon() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  )
+}
+
+function UploadIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  )
+}
+
+function DocIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+  )
+}
+
+function ImageIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
     </svg>
   )
 }

@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactDOM from 'react-dom'
 import './DetailView.css'
 
 // ─── Default palette ───────────────────────────────────────
@@ -20,6 +21,16 @@ const DEFAULT_PALETTE = {
     { key: '--text-secondary', label: 'Text — Secondary', value: '#6B6B60' },
     { key: '--text-tertiary',  label: 'Text — Tertiary',  value: '#9E9E90' },
   ],
+}
+
+// ─── Pencil icon ───────────────────────────────────────────
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  )
 }
 
 // ─── Palette icon ──────────────────────────────────────────
@@ -80,7 +91,7 @@ function ColorRows({ colors, onChange }) {
 }
 
 // ─── Palette popup ─────────────────────────────────────────
-function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate }) {
+function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, style }) {
   const [view, setView]             = React.useState('list')
   const [newName, setNewName]       = React.useState('My Palette')
   const [newColors, setNewColors]   = React.useState(DEFAULT_PALETTE.colors.map(c => ({ ...c })))
@@ -227,7 +238,7 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate }) 
   }
 
   return (
-    <div className="palette-popup">
+    <div className="palette-popup" style={style}>
       <div className="palette-popup-header">
         <span className="palette-popup-title">Palettes</span>
       </div>
@@ -416,11 +427,156 @@ const WIDGET_OPTIONS = [
 ]
 
 // ─── Helpers ───────────────────────────────────────────────
-function formatDueDate(date) {
+function formatDueDate(date, time) {
   if (!date) return '—'
-  return new Date(date).toLocaleDateString('en-US', {
+  const dateStr = new Date(date).toLocaleDateString('en-US', {
     weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
   })
+  if (!time) return dateStr
+  const [h, m] = time.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return `${dateStr} at ${hour}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+// ─── Date/Time Picker constants ────────────────────────────
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAY_LABELS  = ['Su','Mo','Tu','We','Th','Fr','Sa']
+
+function CalIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  )
+}
+
+function DateTimePicker({ dateStr, timeStr, onDateChange, onTimeChange }) {
+  const [open, setOpen]         = React.useState(false)
+  const triggerRef              = React.useRef(null)
+  const popupRef                = React.useRef(null)
+  const [popupPos, setPopupPos] = React.useState(null)
+
+  const initDate = dateStr ? new Date(dateStr + 'T12:00:00') : new Date()
+  const [viewYear,  setViewYear]  = React.useState(initDate.getFullYear())
+  const [viewMonth, setViewMonth] = React.useState(initDate.getMonth())
+
+  const today    = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+
+  // Sync view when date is changed externally
+  React.useEffect(() => {
+    if (dateStr) {
+      const d = new Date(dateStr + 'T12:00:00')
+      setViewYear(d.getFullYear())
+      setViewMonth(d.getMonth())
+    }
+  }, [dateStr])
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return
+    function onOutside(e) {
+      if (
+        popupRef.current  && !popupRef.current.contains(e.target) &&
+        triggerRef.current && !triggerRef.current.contains(e.target)
+      ) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [open])
+
+  function handleOpen() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPopupPos({ top: rect.bottom + 6, left: rect.left, width: Math.max(rect.width, 252) })
+    }
+    setOpen(o => !o)
+  }
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) }
+    else setViewMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0) }
+    else setViewMonth(m => m + 1)
+  }
+
+  const firstDow    = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+
+  function toCellStr(day) {
+    return `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+  }
+
+  function displayDate() {
+    if (!dateStr) return 'Select date'
+    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  return (
+    <div className="dtp-wrap">
+      <button ref={triggerRef} className="dtp-trigger edit-input" onClick={handleOpen} type="button">
+        <span>{displayDate()}</span>
+        <span className="dtp-cal-icon"><CalIcon /></span>
+      </button>
+
+      {open && popupPos && ReactDOM.createPortal(
+        <div
+          ref={popupRef}
+          className="dtp-popup"
+          style={{ top: popupPos.top, left: popupPos.left, width: popupPos.width }}
+        >
+          {/* Month navigation */}
+          <div className="dtp-header">
+            <button className="dtp-nav" onClick={prevMonth} type="button">‹</button>
+            <span className="dtp-month-label">{MONTH_NAMES[viewMonth]} {viewYear}</span>
+            <button className="dtp-nav" onClick={nextMonth} type="button">›</button>
+          </div>
+
+          {/* Day-of-week labels */}
+          <div className="dtp-days-header">
+            {DAY_LABELS.map(d => <span key={d} className="dtp-day-label">{d}</span>)}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="dtp-grid">
+            {cells.map((day, i) => {
+              if (day === null) return <span key={`e${i}`} className="dtp-empty" />
+              const cs = toCellStr(day)
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  className={`dtp-day${cs === dateStr ? ' selected' : ''}${cs === todayStr ? ' today' : ''}`}
+                  onClick={() => { onDateChange(cs); setOpen(false) }}
+                >
+                  {day}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Time picker */}
+          <div className="dtp-time-row">
+            <span className="dtp-time-label">Time (optional)</span>
+            <input
+              className="dtp-time-input"
+              type="time"
+              value={timeStr}
+              onChange={e => onTimeChange(e.target.value)}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
 }
 
 function DefaultClock() {
@@ -448,17 +604,64 @@ function DefaultClock() {
 }
 
 // ─── Main Component ────────────────────────────────────────
-export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete }) {
+export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, pendingTodoItems, onTodoConsumed }) {
   const [widgets, setWidgets]         = React.useState([])
   const [pickerOpen, setPickerOpen]   = React.useState(false)
-  const [palettes, setPalettes]       = React.useState([DEFAULT_PALETTE])
+  const [palettes, setPalettes]           = React.useState([DEFAULT_PALETTE])
   const [activePaletteId, setActivePaletteId] = React.useState('default')
-  const [paletteOpen, setPaletteOpen] = React.useState(false)
-  const pickerRef    = React.useRef(null)
-  const boardRef     = React.useRef(null)
-  const dragRef      = React.useRef(null)
-  const resizeRef    = React.useRef(null)
-  const paletteRef   = React.useRef(null)
+  const [paletteOpen, setPaletteOpen]     = React.useState(false)
+  const [palettePopupPos, setPalettePopupPos] = React.useState(null)
+  const [isEditing, setIsEditing]         = React.useState(false)
+  const [editDraft, setEditDraft]         = React.useState(null)
+  const [paletteSlot, setPaletteSlot]     = React.useState(null)
+  const pickerRef      = React.useRef(null)
+  const boardRef       = React.useRef(null)
+  const dragRef        = React.useRef(null)
+  const resizeRef      = React.useRef(null)
+  const paletteRef     = React.useRef(null)   // button wrap
+  const palettePopupRef = React.useRef(null)  // popup (portaled to body)
+
+  // ── Grab the top-bar palette slot once the DOM is ready ──
+  React.useEffect(() => {
+    setPaletteSlot(document.getElementById('topbar-palette-slot'))
+  }, [])
+
+  // ── Reset edit state when selected item changes ──
+  React.useEffect(() => {
+    setIsEditing(false)
+    setEditDraft(null)
+  }, [selectedItem?.id])
+
+  // ── Consume pending todo items from image upload ──
+  React.useEffect(() => {
+    if (!pendingTodoItems?.length) return
+    const newItems = pendingTodoItems.map(item => ({
+      id: Date.now() + Math.random(),
+      text: item.text,
+      done: false,
+    }))
+    setWidgets(prev => {
+      const existing = prev.find(w => w.type === 'todo')
+      if (existing) {
+        return prev.map(w =>
+          w.type === 'todo'
+            ? { ...w, data: { items: [...(w.data.items || []), ...newItems] } }
+            : w
+        )
+      }
+      // No todo widget — create one
+      const maxZ = prev.length ? Math.max(...prev.map(w => w.z ?? 1)) : 0
+      return [...prev, {
+        id: Date.now(),
+        type: 'todo',
+        data: { items: newItems },
+        x: 8, y: 8,
+        width: 194, height: 214,
+        z: maxZ + 1,
+      }]
+    })
+    onTodoConsumed?.()
+  }, [pendingTodoItems])
 
   // ── Close widget picker on outside click ──
   React.useEffect(() => {
@@ -474,7 +677,9 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
   React.useEffect(() => {
     if (!paletteOpen) return
     function onOutside(e) {
-      if (paletteRef.current && !paletteRef.current.contains(e.target)) setPaletteOpen(false)
+      const inBtn   = paletteRef.current     && paletteRef.current.contains(e.target)
+      const inPopup = palettePopupRef.current && palettePopupRef.current.contains(e.target)
+      if (!inBtn && !inPopup) setPaletteOpen(false)
     }
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
@@ -581,6 +786,46 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
   function removeWidget(id)         { setWidgets(prev => prev.filter(w => w.id !== id)) }
   function updateWidgetData(id, d)  { setWidgets(prev => prev.map(w => w.id === id ? { ...w, data: d } : w)) }
 
+  function handlePaletteToggle() {
+    if (!paletteOpen && paletteRef.current) {
+      const rect = paletteRef.current.getBoundingClientRect()
+      setPalettePopupPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+    }
+    setPaletteOpen(p => !p)
+  }
+
+  function startEditing() {
+    const d = selectedItem.dueDate instanceof Date
+      ? selectedItem.dueDate
+      : new Date(selectedItem.dueDate)
+    const yr = d.getFullYear()
+    const mo = String(d.getMonth() + 1).padStart(2, '0')
+    const dy = String(d.getDate()).padStart(2, '0')
+    const dateStr = `${yr}-${mo}-${dy}`
+    const timeStr = selectedItem.dueTime || ''
+    setEditDraft({ ...selectedItem, dueDateStr: dateStr, dueTimeStr: timeStr })
+    setIsEditing(true)
+  }
+
+  function saveEdit() {
+    if (!editDraft) return
+    const timeVal = editDraft.dueTimeStr || ''
+    const dueDate = timeVal
+      ? new Date(`${editDraft.dueDateStr}T${timeVal}:00`)
+      : new Date(`${editDraft.dueDateStr}T12:00:00`)
+    const updated = { ...editDraft, dueDate, dueTime: timeVal }
+    delete updated.dueDateStr
+    delete updated.dueTimeStr
+    onEdit?.(updated)
+    setIsEditing(false)
+    setEditDraft(null)
+  }
+
+  function cancelEdit() {
+    setIsEditing(false)
+    setEditDraft(null)
+  }
+
   const mode = selectedItem ? 'item' : selectedDay ? 'day' : 'idle'
 
   return (
@@ -589,27 +834,37 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
       {/* ── Header ── */}
       <div className="detail-header">
         <span className="panel-label">Details</span>
-        <div className="widget-add-wrap" ref={pickerRef}>
+        {mode === 'item' ? (
           <button
-            className={`widget-add-btn ${pickerOpen ? 'open' : ''}`}
-            onClick={() => setPickerOpen(p => !p)}
-            title="Add widget"
-          >+</button>
-          {pickerOpen && (
-            <div className="widget-picker">
-              {WIDGET_OPTIONS.map(opt => (
-                <button key={opt.type} className="widget-picker-item" onClick={() => addWidget(opt.type)}>
-                  <span className="picker-icon">{opt.icon}</span>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            className={`widget-add-btn ${isEditing ? 'open' : ''}`}
+            onClick={isEditing ? cancelEdit : startEditing}
+            title={isEditing ? 'Cancel edit' : 'Edit item'}
+          >
+            <PencilIcon />
+          </button>
+        ) : (
+          <div className="widget-add-wrap" ref={pickerRef}>
+            <button
+              className={`widget-add-btn ${pickerOpen ? 'open' : ''}`}
+              onClick={() => setPickerOpen(p => !p)}
+              title="Add widget"
+            >+</button>
+            {pickerOpen && (
+              <div className="widget-picker">
+                {WIDGET_OPTIONS.map(opt => (
+                  <button key={opt.type} className="widget-picker-item" onClick={() => addWidget(opt.type)}>
+                    <span className="picker-icon">{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Item detail ── */}
-      {mode === 'item' && (
+      {mode === 'item' && !isEditing && (
         <div className="detail-content">
           <div className="detail-course-tag" style={{ '--tag-color': selectedItem.color }}>
             {selectedItem.courseName}
@@ -618,7 +873,7 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
           <div className="detail-fields">
             <div className="detail-field">
               <span className="detail-field-label">Due</span>
-              <span className="detail-field-value">{formatDueDate(selectedItem.dueDate)}</span>
+              <span className="detail-field-value">{formatDueDate(selectedItem.dueDate, selectedItem.dueTime)}</span>
             </div>
             <div className="detail-field">
               <span className="detail-field-label">Type</span>
@@ -646,6 +901,77 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
         </div>
       )}
 
+      {/* ── Item edit form ── */}
+      {mode === 'item' && isEditing && editDraft && (
+        <div className="detail-content detail-edit-form">
+          <div className="edit-field">
+            <label className="edit-field-label">Assignment Name</label>
+            <input
+              className="edit-input"
+              value={editDraft.name}
+              onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Course</label>
+            <input
+              className="edit-input"
+              value={editDraft.courseName}
+              onChange={e => setEditDraft(d => ({ ...d, courseName: e.target.value }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Due Date</label>
+            <DateTimePicker
+              dateStr={editDraft.dueDateStr}
+              timeStr={editDraft.dueTimeStr}
+              onDateChange={v => setEditDraft(d => ({ ...d, dueDateStr: v }))}
+              onTimeChange={v => setEditDraft(d => ({ ...d, dueTimeStr: v }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Professor</label>
+            <input
+              className="edit-input"
+              value={editDraft.professor === 'N/A' ? '' : editDraft.professor}
+              placeholder="N/A"
+              onChange={e => setEditDraft(d => ({ ...d, professor: e.target.value || 'N/A' }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Type</label>
+            <input
+              className="edit-input"
+              value={editDraft.type === 'N/A' ? '' : editDraft.type}
+              placeholder="N/A"
+              onChange={e => setEditDraft(d => ({ ...d, type: e.target.value || 'N/A' }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Weight</label>
+            <input
+              className="edit-input"
+              value={editDraft.weight === 'N/A' ? '' : editDraft.weight}
+              placeholder="N/A"
+              onChange={e => setEditDraft(d => ({ ...d, weight: e.target.value || 'N/A' }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Instructions</label>
+            <textarea
+              className="edit-input edit-textarea"
+              value={editDraft.instructions === 'N/A' ? '' : editDraft.instructions}
+              placeholder="N/A"
+              onChange={e => setEditDraft(d => ({ ...d, instructions: e.target.value || 'N/A' }))}
+            />
+          </div>
+          <div className="detail-actions">
+            <button className="detail-btn complete" onClick={saveEdit}>Save</button>
+            <button className="detail-btn delete"   onClick={cancelEdit}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Day overview ── */}
       {mode === 'day' && (
         <div className="detail-day">
@@ -667,26 +993,38 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
         </div>
       )}
 
-      {/* ── Palette button (idle mode only) ── */}
-      {mode === 'idle' && (
-        <div className="palette-btn-wrap" ref={paletteRef}>
+      {/* ── Palette button — portaled to top bar ── */}
+      {paletteSlot && ReactDOM.createPortal(
+        <div ref={paletteRef}>
           <button
             className={`palette-btn ${paletteOpen ? 'open' : ''}`}
-            onClick={() => setPaletteOpen(p => !p)}
+            onClick={handlePaletteToggle}
             title="Change palette"
           >
             <PaletteIcon />
           </button>
-          {paletteOpen && (
-            <PalettePopup
-              palettes={palettes}
-              activePaletteId={activePaletteId}
-              onSelect={id => { setActivePaletteId(id); setPaletteOpen(false) }}
-              onAdd={p => { setPalettes(prev => [...prev, p]); setActivePaletteId(p.id); setPaletteOpen(false) }}
-              onUpdate={p => setPalettes(prev => prev.map(existing => existing.id === p.id ? p : existing))}
-            />
-          )}
-        </div>
+        </div>,
+        paletteSlot
+      )}
+
+      {/* ── Palette popup — portaled to body so it layers above everything ── */}
+      {paletteOpen && palettePopupPos && ReactDOM.createPortal(
+        <div ref={palettePopupRef}>
+          <PalettePopup
+            style={{
+              position: 'fixed',
+              top: palettePopupPos.top,
+              right: palettePopupPos.right,
+              zIndex: 9999,
+            }}
+            palettes={palettes}
+            activePaletteId={activePaletteId}
+            onSelect={id => { setActivePaletteId(id); setPaletteOpen(false) }}
+            onAdd={p => { setPalettes(prev => [...prev, p]); setActivePaletteId(p.id); setPaletteOpen(false) }}
+            onUpdate={p => setPalettes(prev => prev.map(existing => existing.id === p.id ? p : existing))}
+          />
+        </div>,
+        document.body
       )}
 
       {/* ── Widget board ── */}
