@@ -510,6 +510,13 @@
   text-transform: capitalize;
 }
 
+.detail-instructions {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
 /* ─── Detail Actions ──────────────────────────────────────── */
 .detail-actions {
   display: flex;

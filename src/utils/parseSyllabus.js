@@ -1,5 +1,7 @@
 // ─── Syllabus Parser ──────────────────────────────────────
 // Extracts assignment/exam data from raw PDF text.
+// Every item MUST have: name, dueDate, courseName, professor,
+// instructions, type, weight, completed, source, id.
 
 const ASSIGNMENT_KEYWORDS = /\b(assignment|homework|hw|quiz|exam|midterm|final|paper|essay|project|presentation|reading|lab|report|discussion|response|reflection|draft|submission|due)\b/i
 
@@ -75,17 +77,73 @@ function extractDatesFromLine(line) {
 
 function guessAssignmentType(line) {
   const l = line.toLowerCase()
-  if (/\b(midterm|mid-term)\b/.test(l)) return 'exam'
-  if (/\b(final exam|final)\b/.test(l)) return 'exam'
-  if (/\b(quiz)\b/.test(l)) return 'quiz'
-  if (/\b(exam|test)\b/.test(l)) return 'exam'
-  if (/\b(paper|essay|report|reflection|response|draft)\b/.test(l)) return 'essay'
-  if (/\b(project|presentation)\b/.test(l)) return 'project'
-  if (/\b(reading|chapter)\b/.test(l)) return 'reading'
-  if (/\b(lab)\b/.test(l)) return 'lab'
-  if (/\b(homework|hw|assignment)\b/.test(l)) return 'assignment'
-  if (/\b(discussion)\b/.test(l)) return 'discussion'
-  return 'assignment'
+  if (/\b(midterm|mid-term)\b/.test(l)) return 'Exam'
+  if (/\b(final exam|final)\b/.test(l)) return 'Exam'
+  if (/\b(quiz)\b/.test(l)) return 'Quiz'
+  if (/\b(exam|test)\b/.test(l)) return 'Exam'
+  if (/\b(paper|essay|report|reflection|response|draft)\b/.test(l)) return 'Essay'
+  if (/\b(project|presentation)\b/.test(l)) return 'Project'
+  if (/\b(reading|chapter)\b/.test(l)) return 'Reading'
+  if (/\b(lab)\b/.test(l)) return 'Lab'
+  if (/\b(homework|hw|assignment)\b/.test(l)) return 'Assignment'
+  if (/\b(discussion)\b/.test(l)) return 'Discussion'
+  return 'N/A'
+}
+
+// ─── Extract weight (e.g. "20%", "10 points", "5% of final grade") ─
+function extractWeight(line, surroundingLines) {
+  const combined = [line, ...surroundingLines].join(' ')
+  // Match patterns like "20%", "(15%)", "worth 10%", "10 points", "10 pts"
+  const pctMatch = combined.match(/(\d{1,3})\s*%/i)
+  if (pctMatch) return `${pctMatch[1]}%`
+  const ptsMatch = combined.match(/(\d{1,3})\s*(?:points?|pts?)\b/i)
+  if (ptsMatch) return `${ptsMatch[1]} pts`
+  return 'N/A'
+}
+
+// ─── Extract instructions / deliverables from nearby lines ──
+function extractInstructions(lines, startIndex) {
+  // Look at the lines immediately following the assignment line for
+  // descriptive content that isn't another assignment or date header.
+  const snippets = []
+  for (let j = startIndex + 1; j < Math.min(startIndex + 5, lines.length); j++) {
+    const l = lines[j]
+    // Stop if we hit another assignment keyword line or a date-only line
+    if (ASSIGNMENT_KEYWORDS.test(l)) break
+    if (extractDatesFromLine(l).length > 0 && l.length < 30) break
+    // Skip very short lines (section numbers, page refs)
+    if (l.length < 5) continue
+    // Skip lines that look like headers / labels
+    if (/^(week|module|unit|chapter)\s+\d/i.test(l)) break
+    snippets.push(l)
+  }
+  const result = snippets.join(' ').trim()
+  return result.length > 3 ? result : 'N/A'
+}
+
+// ─── Extract professor name ────────────────────────────────
+function extractProfessor(lines) {
+  for (let i = 0; i < Math.min(lines.length, 50); i++) {
+    const line = lines[i]
+
+    // "Instructor: Dr. Smith" or "Professor: Jane Doe"
+    const labelMatch = line.match(/(?:instructor|professor|faculty|taught by|lecturer)\s*:?\s*(.+)/i)
+    if (labelMatch) {
+      let name = labelMatch[1].trim()
+      // Clean up trailing junk (email, phone, etc.)
+      name = name.split(/[,|;]/)[0].trim()
+      name = name.replace(/\s*(email|phone|office|ext\.|@).*$/i, '').trim()
+      if (name.length > 2 && name.length < 60) return name
+    }
+
+    // "Dr. LastName" or "Prof. LastName" standalone
+    const titleMatch = line.match(/^((?:Dr|Prof|Professor|Mr|Mrs|Ms)\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*$/i)
+    if (titleMatch) {
+      const name = titleMatch[1].trim()
+      if (name.length > 3 && name.length < 60) return name
+    }
+  }
+  return 'N/A'
 }
 
 // Lines that look like admin metadata, not course names
@@ -146,6 +204,7 @@ function extractCourseName(lines, filename) {
 export function parseSyllabus(text, filename) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
   const courseName = extractCourseName(lines, filename)
+  const professor = extractProfessor(lines)
   const assignments = []
   let idCounter = 0
 
@@ -175,16 +234,26 @@ export function parseSyllabus(text, filename) {
 
     if (name.length < 3 || name.length > 120) name = line.slice(0, 80).trim()
 
+    // Surrounding lines for weight extraction
+    const surroundingLines = [
+      lines[i - 1] || '',
+      lines[i + 1] || '',
+      lines[i + 2] || '',
+    ]
+
     assignments.push({
       id: `${filename}-${idCounter++}`,
       name,
-      courseName,
       dueDate: allDates[0],
+      courseName,
+      professor,
+      instructions: extractInstructions(lines, i),
       type: guessAssignmentType(line),
+      weight: extractWeight(line, surroundingLines),
       completed: false,
       source: filename,
     })
   }
 
-  return { courseName, assignments }
+  return { courseName, professor, assignments }
 }

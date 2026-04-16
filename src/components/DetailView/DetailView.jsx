@@ -624,10 +624,18 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
               <span className="detail-field-label">Type</span>
               <span className="detail-field-value detail-type">{selectedItem.type}</span>
             </div>
-            {selectedItem.professor && (
-              <div className="detail-field">
-                <span className="detail-field-label">Professor</span>
-                <span className="detail-field-value">{selectedItem.professor}</span>
+            <div className="detail-field">
+              <span className="detail-field-label">Professor</span>
+              <span className="detail-field-value">{selectedItem.professor || 'N/A'}</span>
+            </div>
+            <div className="detail-field">
+              <span className="detail-field-label">Weight</span>
+              <span className="detail-field-value">{selectedItem.weight || 'N/A'}</span>
+            </div>
+            {selectedItem.instructions && selectedItem.instructions !== 'N/A' && (
+              <div className="detail-field detail-field-full">
+                <span className="detail-field-label">Instructions</span>
+                <span className="detail-field-value detail-instructions">{selectedItem.instructions}</span>
               </div>
             )}
           </div>
