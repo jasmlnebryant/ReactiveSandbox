@@ -110,6 +110,7 @@
   border-right: 1px solid var(--border-inner);
   border-bottom: 1px solid var(--border-inner);
   padding: 4px 5px;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -194,22 +195,15 @@
 
 /* ── More indicator ── */
 .month-more-btn {
+  display: block;
   background: rgba(180, 180, 175, 0.28);
-  border: none;
-  cursor: pointer;
   font-size: 9px;
   font-weight: 700;
   color: var(--text-secondary);
   padding: 2px 4px;
   border-radius: 4px;
-  text-align: left;
   line-height: 1;
   flex-shrink: 0;
   width: 100%;
-  transition: color 0.12s ease, background 0.12s ease;
-}
-
-.month-more-btn:hover {
-  background: rgba(180, 180, 175, 0.48);
-  color: var(--text-primary);
+  pointer-events: none;
 }

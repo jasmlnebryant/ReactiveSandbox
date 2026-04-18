@@ -6,6 +6,7 @@ import MonthlyView from './components/MonthlyView/MonthlyView'
 import DetailView from './components/DetailView/DetailView'
 import { extractPdfText } from './utils/extractPdfText'
 import { parseSyllabus } from './utils/parseSyllabus'
+import DateTimePicker from './components/DateTimePicker'
 import './App.css'
 
 function getWeekStart(offsetWeeks = 0) {
@@ -144,33 +145,14 @@ export default function App() {
     if (e.key === 'Escape') setEditingCourseIndex(null)
   }
 
+  function handleDeleteCourse(index) {
+    setProcessedCourses(prev => prev.filter((_, i) => i !== index))
+  }
+
   function handleDismiss() {
     setOverlayState('done')
-    // Jump to the week/month of the nearest upcoming assignment
-    const now = new Date()
-    const upcoming = assignments
-      .map(a => new Date(a.dueDate))
-      .filter(d => d >= now)
-      .sort((a, b) => a - b)
-
-    if (upcoming.length > 0) {
-      const nearest = upcoming[0]
-      // Week offset: how many weeks from the current week start to nearest's week start
-      const currentWeekStart = getWeekStart(0)
-      const nearestWeekStart = new Date(nearest)
-      nearestWeekStart.setDate(nearest.getDate() - nearest.getDay())
-      nearestWeekStart.setHours(0, 0, 0, 0)
-      const diffMs = nearestWeekStart - currentWeekStart
-      const diffWeeks = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000))
-      setWeekOffset(diffWeeks)
-
-      // Month offset
-      const todayYear = now.getFullYear()
-      const todayMonth = now.getMonth()
-      const nearestYear = nearest.getFullYear()
-      const nearestMonth = nearest.getMonth()
-      setMonthOffset((nearestYear - todayYear) * 12 + (nearestMonth - todayMonth))
-    }
+    setWeekOffset(0)
+    setMonthOffset(0)
   }
 
   function handleUploadMenuToggle() {
@@ -331,6 +313,7 @@ export default function App() {
               assignments={assignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
+              onSelectDay={handleSelectDay}
               weekOffset={weekOffset}
               onWeekChange={setWeekOffset}
             />
@@ -364,6 +347,11 @@ export default function App() {
             onEdit={updated => {
               setAssignments(prev => prev.map(a => a.id === updated.id ? updated : a))
               setSelectedItem(updated)
+            }}
+            onRenameCourse={(oldName, newName) => {
+              setAssignments(prev => prev.map(a =>
+                a.courseName === oldName ? { ...a, courseName: newName } : a
+              ))
             }}
             pendingTodoItems={pendingTodoItems}
             onTodoConsumed={() => setPendingTodoItems([])}
@@ -438,12 +426,13 @@ export default function App() {
                         value={item.text}
                         onChange={e => updateImageItem(item.id, 'text', e.target.value)}
                       />
-                      <input
-                        className="img-form-input img-form-item-date"
-                        type="date"
-                        value={item.dateStr}
-                        onChange={e => updateImageItem(item.id, 'dateStr', e.target.value)}
-                      />
+                      <div className="img-form-item-date">
+                        <DateTimePicker
+                          hideTime
+                          dateStr={item.dateStr}
+                          onDateChange={v => updateImageItem(item.id, 'dateStr', v)}
+                        />
+                      </div>
                       {imageForm.items.length > 1 && (
                         <button className="img-item-remove" onClick={() => removeImageItem(item.id)} title="Remove">×</button>
                       )}
@@ -493,12 +482,13 @@ export default function App() {
                 <div className="prompt-body">
                   <p className="prompt-eyebrow">Welcome</p>
                   <p className="prompt-title">Get<br />started.</p>
-                  <p className="prompt-sub">Upload a syllabus or create your first task to begin.</p>
+                  <p className="prompt-sub">Upload a syllabus or to-do list to begin.</p>
                 </div>
                 <div className="prompt-actions">
                   <button className="prompt-btn primary" onClick={handleUploadClick}>Upload Syllabus</button>
                   <span className="prompt-or">OR</span>
-                  <button className="prompt-btn secondary">Create a Task</button>
+                  <button className="prompt-btn secondary" onClick={() => imageInputRef.current.click()}>Upload To-Do List</button>
+                  <button className="prompt-btn-skip" onClick={handleDismiss}>Skip to Calendar</button>
                 </div>
               </>
             )}
@@ -514,8 +504,10 @@ export default function App() {
             {overlayState === 'success' && (
               <>
                 <div className="prompt-body">
-                  <p className="prompt-eyebrow">Upload complete</p>
-                  <p className="prompt-title success-title">Done.</p>
+                  <p className="prompt-eyebrow">{processedCourses.every(c => c.error) ? 'Something went wrong' : 'Upload complete'}</p>
+                  <p className="prompt-title success-title">
+                    {processedCourses.every(c => c.error) ? 'Uh oh.' : 'Done.'}
+                  </p>
                   <div className="success-courses">
                     {processedCourses.map((c, i) => (
                       <div key={i} className={`success-course-row ${c.error ? 'error' : ''}`}>
@@ -531,13 +523,23 @@ export default function App() {
                         ) : (
                           <div className="course-name-row">
                             <span className="success-course-name">{c.name}</span>
-                            <button
-                              className="course-edit-btn"
-                              onClick={() => handleEditCourse(i, c.name)}
-                              title="Rename course"
-                            >
-                              <PencilIcon />
-                            </button>
+                            {c.error ? (
+                              <button
+                                className="course-delete-btn"
+                                onClick={() => handleDeleteCourse(i)}
+                                title="Remove"
+                              >
+                                <TrashIcon />
+                              </button>
+                            ) : (
+                              <button
+                                className="course-edit-btn"
+                                onClick={() => handleEditCourse(i, c.name)}
+                                title="Rename course"
+                              >
+                                <PencilIcon />
+                              </button>
+                            )}
                           </div>
                         )}
                         <span className="success-course-count">{c.error ? 'Could not parse' : `${c.count} item${c.count !== 1 ? 's' : ''}`}</span>
@@ -545,11 +547,20 @@ export default function App() {
                     ))}
                   </div>
                 </div>
-                <div className="prompt-actions">
-                  <button className="prompt-btn primary" onClick={handleDismiss}>View Schedule</button>
-                  <span className="prompt-or">OR</span>
-                  <button className="prompt-btn secondary" onClick={handleUploadClick}>Upload More</button>
-                </div>
+                {processedCourses.every(c => c.error) ? (
+                  <div className="prompt-actions">
+                    <button className="prompt-btn primary" onClick={handleUploadClick}>Upload Syllabus</button>
+                    <span className="prompt-or">OR</span>
+                    <button className="prompt-btn secondary" onClick={() => imageInputRef.current.click()}>Upload To-Do List</button>
+                    <button className="prompt-btn-skip" onClick={handleDismiss}>Skip to Calendar</button>
+                  </div>
+                ) : (
+                  <div className="prompt-actions">
+                    <button className="prompt-btn primary" onClick={handleDismiss}>View Schedule</button>
+                    <span className="prompt-or">OR</span>
+                    <button className="prompt-btn secondary" onClick={handleUploadClick}>Upload More</button>
+                  </div>
+                )}
               </>
             )}
 
@@ -566,6 +577,18 @@ function PencilIcon() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6"/>
+      <path d="M14 11v6"/>
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
     </svg>
   )
 }

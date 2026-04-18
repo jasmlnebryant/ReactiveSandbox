@@ -34,7 +34,7 @@ function formatRange(start, end) {
   return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`
 }
 
-export default function WeeklyView({ assignments = [], selectedItem, onSelectItem, weekOffset = 0, onWeekChange }) {
+export default function WeeklyView({ assignments = [], selectedItem, onSelectItem, onSelectDay, weekOffset = 0, onWeekChange }) {
   const today = new Date()
 
   // Week start based on offset from current week
@@ -54,6 +54,7 @@ export default function WeeklyView({ assignments = [], selectedItem, onSelectIte
     return {
       label: day,
       date: d.getDate(),
+      fullDate: new Date(d),
       isToday: d.toDateString() === today.toDateString(),
     }
   })
@@ -87,7 +88,11 @@ export default function WeeklyView({ assignments = [], selectedItem, onSelectIte
         {weekDates.map((day, i) => {
           const dayItems = weekAssignments.filter(a => new Date(a.dueDate).getDay() === i)
           return (
-            <div key={i} className={`day-column ${day.isToday ? 'today' : ''}`}>
+            <div
+              key={i}
+              className={`day-column ${day.isToday ? 'today' : ''}`}
+              onClick={() => onSelectDay?.({ date: day.fullDate, items: dayItems })}
+            >
               <div className="day-header">
                 <span className="day-label">{day.label}</span>
                 <span className={`day-number ${day.isToday ? 'today-dot' : ''}`}>{day.date}</span>
@@ -101,7 +106,7 @@ export default function WeeklyView({ assignments = [], selectedItem, onSelectIte
                       key={item.id}
                       className={`assignment-card ${isSelected ? 'selected' : ''} ${item.completed ? 'completed' : ''}`}
                       style={{ '--card-color': color }}
-                      onClick={() => onSelectItem?.(isSelected ? null : item)}
+                      onClick={e => { e.stopPropagation(); onSelectItem?.(isSelected ? null : item) }}
                     >
                       <span className="card-name">{item.name}</span>
                       <span className="card-due">

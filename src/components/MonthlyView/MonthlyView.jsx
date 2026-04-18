@@ -92,7 +92,11 @@ export default function MonthlyView({ assignments = [], selectedItem, onSelectIt
             const hasMore = events.length > MAX_VISIBLE
 
             return (
-              <div key={i} className={`month-cell ${day ? '' : 'empty'} ${isToday ? 'today' : ''}`}>
+              <div
+                key={i}
+                className={`month-cell ${day ? '' : 'empty'} ${isToday ? 'today' : ''}`}
+                onClick={day ? () => onSelectDay?.({ date: new Date(year, month, day), items: events }) : undefined}
+              >
                 {day && (
                   <>
                     <span className={`month-date-num ${isToday ? 'today-circle' : ''}`}>{day}</span>
@@ -105,22 +109,14 @@ export default function MonthlyView({ assignments = [], selectedItem, onSelectIt
                             key={ev.id}
                             className={`month-event ${isSelected ? 'selected' : ''} ${ev.completed ? 'completed' : ''}`}
                             style={{ '--ev-color': color }}
-                            onClick={() => onSelectItem?.(isSelected ? null : ev)}
+                            onClick={e => { e.stopPropagation(); onSelectItem?.(isSelected ? null : ev) }}
                           >
                             <span className="month-event-name">{ev.name}</span>
                           </div>
                         )
                       })}
                       {hasMore && (
-                        <button
-                          className="month-more-btn"
-                          onClick={e => {
-                            e.stopPropagation()
-                            onSelectDay?.({ date: new Date(year, month, day), items: events })
-                          }}
-                        >
-                          ...
-                        </button>
+                        <span className="month-more-btn">+{events.length - MAX_VISIBLE} more</span>
                       )}
                     </div>
                   </>

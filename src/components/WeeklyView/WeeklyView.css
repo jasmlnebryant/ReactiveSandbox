@@ -101,6 +101,12 @@
   flex-direction: column;
   border-right: 1px solid var(--border-inner);
   overflow: hidden;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.day-column:hover {
+  background: rgba(195, 199, 166, 0.12);
 }
 
 .day-column:last-child {

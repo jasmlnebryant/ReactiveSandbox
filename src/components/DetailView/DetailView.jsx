@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import './DetailView.css'
+import DateTimePicker from '../DateTimePicker'
 
 // ─── Default palette ───────────────────────────────────────
 const DEFAULT_PALETTE = {
@@ -91,19 +92,20 @@ function ColorRows({ colors, onChange }) {
 }
 
 // ─── Palette popup ─────────────────────────────────────────
-function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, style }) {
+// confirmMode: null | 'back' | 'close'  — distinguishes ‹ back vs click-outside
+const PalettePopup = React.forwardRef(function PalettePopup(
+  { palettes, activePaletteId, onSelect, onAdd, onUpdate, onClose, style }, ref
+) {
   const [view, setView]             = React.useState('list')
   const [newName, setNewName]       = React.useState('My Palette')
   const [newColors, setNewColors]   = React.useState(DEFAULT_PALETTE.colors.map(c => ({ ...c })))
   const [editName, setEditName]     = React.useState('')
   const [editColors, setEditColors] = React.useState([])
   const [editId, setEditId]         = React.useState(null)
-  const [confirmingBack, setConfirmingBack] = React.useState(false)
+  const [confirmMode, setConfirmMode] = React.useState(null) // null | 'back' | 'close'
 
-  // Snapshot of state when the form was first opened — used to detect changes
   const snapshot = React.useRef(null)
 
-  // Revert CSS vars to the currently saved active palette
   function revertToSaved() {
     const active = palettes.find(p => p.id === activePaletteId) || palettes[0]
     if (active) active.colors.forEach(({ key, value }) => {
@@ -120,11 +122,8 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, st
   }
 
   function handleListClick(p) {
-    if (p.id === activePaletteId) {
-      openEdit(p)
-    } else {
-      onSelect(p.id)
-    }
+    if (p.id === activePaletteId) openEdit(p)
+    else onSelect(p.id)
   }
 
   function hasChanges() {
@@ -139,53 +138,65 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, st
     return false
   }
 
+  // Called by the outside-click handler in DetailView
+  React.useImperativeHandle(ref, () => ({
+    tryClose() {
+      if ((view === 'create' || view === 'edit') && hasChanges()) {
+        setConfirmMode('close')
+      } else {
+        revertToSaved()
+        onClose?.()
+      }
+    }
+  }))
+
   function handleBackClick() {
-    if (hasChanges()) {
-      setConfirmingBack(true)
-    } else {
-      revertToSaved()
-      setView('list')
-    }
+    if (hasChanges()) setConfirmMode('back')
+    else { revertToSaved(); setView('list') }
   }
 
-  function handleDiscardAndBack() {
-    setConfirmingBack(false)
+  function handleDiscard() {
+    const mode = confirmMode
+    setConfirmMode(null)
     revertToSaved()
-    setView('list')
-    // Reset create state if discarding a new palette
-    if (view === 'create') {
-      setNewName('My Palette')
-      setNewColors(DEFAULT_PALETTE.colors.map(c => ({ ...c })))
-    }
+    if (view === 'create') { setNewName('My Palette'); setNewColors(DEFAULT_PALETTE.colors.map(c => ({ ...c }))) }
+    if (mode === 'close') onClose?.()
+    else setView('list')
   }
 
-  function handleSaveAndBack() {
-    setConfirmingBack(false)
-    if (view === 'create') handleCreate()
-    if (view === 'edit')   handleSaveEdit()
+  function handleSaveConfirm() {
+    const mode = confirmMode
+    setConfirmMode(null)
+    if (view === 'create') handleCreate(mode)
+    if (view === 'edit')   handleSaveEdit(mode)
   }
 
-  function handleCreate() {
+  function handleCreate(closeAfter) {
     onAdd({ id: Date.now().toString(), name: newName.trim() || 'My Palette', colors: newColors })
-    setView('list')
     setNewName('My Palette')
     setNewColors(DEFAULT_PALETTE.colors.map(c => ({ ...c })))
+    if (closeAfter === 'close') onClose?.()
+    else setView('list')
   }
 
-  function handleSaveEdit() {
+  function handleSaveEdit(closeAfter) {
     onUpdate({ id: editId, name: editName.trim() || 'My Palette', colors: editColors })
-    setView('list')
+    if (closeAfter === 'close') onClose?.()
+    else setView('list')
   }
 
-  // Shared "unsaved changes" confirmation overlay
-  const confirmOverlay = confirmingBack && (
+  const confirmOverlay = confirmMode && (
     <div className="palette-confirm-overlay">
       <div className="palette-confirm-box">
         <p className="palette-confirm-title">Unsaved changes</p>
-        <p className="palette-confirm-sub">Do you want to save before going back?</p>
+        <p className="palette-confirm-sub">
+          {confirmMode === 'close'
+            ? 'Save your changes before closing?'
+            : 'Do you want to save before going back?'}
+        </p>
         <div className="palette-confirm-actions">
-          <button className="palette-confirm-save" onClick={handleSaveAndBack}>Save</button>
-          <button className="palette-confirm-discard" onClick={handleDiscardAndBack}>Discard</button>
+          <button className="palette-confirm-save"    onClick={handleSaveConfirm}>Save</button>
+          <button className="palette-confirm-discard" onClick={handleDiscard}>Discard</button>
         </div>
       </div>
     </div>
@@ -193,7 +204,7 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, st
 
   if (view === 'create') {
     return (
-      <div className="palette-popup">
+      <div className="palette-popup" style={style}>
         {confirmOverlay}
         <div className="palette-popup-header">
           <button className="palette-back-btn" onClick={handleBackClick}>‹</button>
@@ -209,14 +220,14 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, st
           colors={newColors}
           onChange={(i, v) => setNewColors(prev => prev.map((c, idx) => idx === i ? { ...c, value: v } : c))}
         />
-        <button className="palette-save-btn" onClick={handleCreate}>Save Palette</button>
+        <button className="palette-save-btn" onClick={() => handleCreate()}>Save Palette</button>
       </div>
     )
   }
 
   if (view === 'edit') {
     return (
-      <div className="palette-popup">
+      <div className="palette-popup" style={style}>
         {confirmOverlay}
         <div className="palette-popup-header">
           <button className="palette-back-btn" onClick={handleBackClick}>‹</button>
@@ -232,7 +243,7 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, st
           colors={editColors}
           onChange={(i, v) => setEditColors(prev => prev.map((c, idx) => idx === i ? { ...c, value: v } : c))}
         />
-        <button className="palette-save-btn" onClick={handleSaveEdit}>Save Changes</button>
+        <button className="palette-save-btn" onClick={() => handleSaveEdit()}>Save Changes</button>
       </div>
     )
   }
@@ -269,7 +280,7 @@ function PalettePopup({ palettes, activePaletteId, onSelect, onAdd, onUpdate, st
       <button className="palette-new-btn" onClick={() => setView('create')}>+ New Palette</button>
     </div>
   )
-}
+})
 
 // ─── Default sizes per widget type ────────────────────────
 const WIDGET_DEFAULTS = {
@@ -439,145 +450,6 @@ function formatDueDate(date, time) {
   return `${dateStr} at ${hour}:${String(m).padStart(2, '0')} ${ampm}`
 }
 
-// ─── Date/Time Picker constants ────────────────────────────
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
-const DAY_LABELS  = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-function CalIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-      <line x1="16" y1="2" x2="16" y2="6"/>
-      <line x1="8" y1="2" x2="8" y2="6"/>
-      <line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  )
-}
-
-function DateTimePicker({ dateStr, timeStr, onDateChange, onTimeChange }) {
-  const [open, setOpen]         = React.useState(false)
-  const triggerRef              = React.useRef(null)
-  const popupRef                = React.useRef(null)
-  const [popupPos, setPopupPos] = React.useState(null)
-
-  const initDate = dateStr ? new Date(dateStr + 'T12:00:00') : new Date()
-  const [viewYear,  setViewYear]  = React.useState(initDate.getFullYear())
-  const [viewMonth, setViewMonth] = React.useState(initDate.getMonth())
-
-  const today    = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
-
-  // Sync view when date is changed externally
-  React.useEffect(() => {
-    if (dateStr) {
-      const d = new Date(dateStr + 'T12:00:00')
-      setViewYear(d.getFullYear())
-      setViewMonth(d.getMonth())
-    }
-  }, [dateStr])
-
-  // Close on outside click
-  React.useEffect(() => {
-    if (!open) return
-    function onOutside(e) {
-      if (
-        popupRef.current  && !popupRef.current.contains(e.target) &&
-        triggerRef.current && !triggerRef.current.contains(e.target)
-      ) setOpen(false)
-    }
-    document.addEventListener('mousedown', onOutside)
-    return () => document.removeEventListener('mousedown', onOutside)
-  }, [open])
-
-  function handleOpen() {
-    if (!open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      setPopupPos({ top: rect.bottom + 6, left: rect.left, width: Math.max(rect.width, 252) })
-    }
-    setOpen(o => !o)
-  }
-
-  function prevMonth() {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) }
-    else setViewMonth(m => m - 1)
-  }
-  function nextMonth() {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0) }
-    else setViewMonth(m => m + 1)
-  }
-
-  const firstDow    = new Date(viewYear, viewMonth, 1).getDay()
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
-  const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
-
-  function toCellStr(day) {
-    return `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-  }
-
-  function displayDate() {
-    if (!dateStr) return 'Select date'
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
-  return (
-    <div className="dtp-wrap">
-      <button ref={triggerRef} className="dtp-trigger edit-input" onClick={handleOpen} type="button">
-        <span>{displayDate()}</span>
-        <span className="dtp-cal-icon"><CalIcon /></span>
-      </button>
-
-      {open && popupPos && ReactDOM.createPortal(
-        <div
-          ref={popupRef}
-          className="dtp-popup"
-          style={{ top: popupPos.top, left: popupPos.left, width: popupPos.width }}
-        >
-          {/* Month navigation */}
-          <div className="dtp-header">
-            <button className="dtp-nav" onClick={prevMonth} type="button">‹</button>
-            <span className="dtp-month-label">{MONTH_NAMES[viewMonth]} {viewYear}</span>
-            <button className="dtp-nav" onClick={nextMonth} type="button">›</button>
-          </div>
-
-          {/* Day-of-week labels */}
-          <div className="dtp-days-header">
-            {DAY_LABELS.map(d => <span key={d} className="dtp-day-label">{d}</span>)}
-          </div>
-
-          {/* Calendar grid */}
-          <div className="dtp-grid">
-            {cells.map((day, i) => {
-              if (day === null) return <span key={`e${i}`} className="dtp-empty" />
-              const cs = toCellStr(day)
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  className={`dtp-day${cs === dateStr ? ' selected' : ''}${cs === todayStr ? ' today' : ''}`}
-                  onClick={() => { onDateChange(cs); setOpen(false) }}
-                >
-                  {day}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Time picker */}
-          <div className="dtp-time-row">
-            <span className="dtp-time-label">Time (optional)</span>
-            <input
-              className="dtp-time-input"
-              type="time"
-              value={timeStr}
-              onChange={e => onTimeChange(e.target.value)}
-            />
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
 
 function DefaultClock() {
   const [time, setTime] = React.useState(new Date())
@@ -604,7 +476,7 @@ function DefaultClock() {
 }
 
 // ─── Main Component ────────────────────────────────────────
-export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, pendingTodoItems, onTodoConsumed }) {
+export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, onRenameCourse, pendingTodoItems, onTodoConsumed }) {
   const [widgets, setWidgets]         = React.useState([])
   const [pickerOpen, setPickerOpen]   = React.useState(false)
   const [palettes, setPalettes]           = React.useState([DEFAULT_PALETTE])
@@ -613,13 +485,15 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
   const [palettePopupPos, setPalettePopupPos] = React.useState(null)
   const [isEditing, setIsEditing]         = React.useState(false)
   const [editDraft, setEditDraft]         = React.useState(null)
+  const [courseRenamePrompt, setCourseRenamePrompt] = React.useState(null)
   const [paletteSlot, setPaletteSlot]     = React.useState(null)
   const pickerRef      = React.useRef(null)
   const boardRef       = React.useRef(null)
   const dragRef        = React.useRef(null)
   const resizeRef      = React.useRef(null)
-  const paletteRef     = React.useRef(null)   // button wrap
-  const palettePopupRef = React.useRef(null)  // popup (portaled to body)
+  const paletteRef          = React.useRef(null)   // button wrap
+  const palettePopupRef     = React.useRef(null)   // popup wrapper div (for contains check)
+  const paletteComponentRef = React.useRef(null)   // PalettePopup component (for tryClose)
 
   // ── Grab the top-bar palette slot once the DOM is ready ──
   React.useEffect(() => {
@@ -679,7 +553,7 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
     function onOutside(e) {
       const inBtn   = paletteRef.current     && paletteRef.current.contains(e.target)
       const inPopup = palettePopupRef.current && palettePopupRef.current.contains(e.target)
-      if (!inBtn && !inPopup) setPaletteOpen(false)
+      if (!inBtn && !inPopup) paletteComponentRef.current?.tryClose()
     }
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
@@ -809,6 +683,7 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
 
   function saveEdit() {
     if (!editDraft) return
+    const courseChanged = editDraft.courseName.trim() !== selectedItem.courseName
     const timeVal = editDraft.dueTimeStr || ''
     const dueDate = timeVal
       ? new Date(`${editDraft.dueDateStr}T${timeVal}:00`)
@@ -816,7 +691,21 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
     const updated = { ...editDraft, dueDate, dueTime: timeVal }
     delete updated.dueDateStr
     delete updated.dueTimeStr
+    if (courseChanged) {
+      setCourseRenamePrompt({ updated, oldCourseName: selectedItem.courseName })
+    } else {
+      onEdit?.(updated)
+      setIsEditing(false)
+      setEditDraft(null)
+    }
+  }
+
+  function commitEdit(renameAll) {
+    if (!courseRenamePrompt) return
+    const { updated, oldCourseName } = courseRenamePrompt
     onEdit?.(updated)
+    if (renameAll) onRenameCourse?.(oldCourseName, updated.courseName)
+    setCourseRenamePrompt(null)
     setIsEditing(false)
     setEditDraft(null)
   }
@@ -979,7 +868,9 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
             {selectedDay.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
           <div className="detail-day-items">
-            {selectedDay.items.map(item => (
+            {selectedDay.items.length === 0 ? (
+              <p className="detail-day-empty">No items due this day.</p>
+            ) : selectedDay.items.map(item => (
               <div
                 key={item.id}
                 className={`detail-day-item ${item.completed ? 'completed' : ''}`}
@@ -989,6 +880,22 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
                 <span className="detail-day-item-course">{item.courseName}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Course rename confirmation ── */}
+      {courseRenamePrompt && (
+        <div className="rename-confirm-overlay">
+          <div className="rename-confirm-card">
+            <p className="rename-confirm-title">Rename course?</p>
+            <p className="rename-confirm-sub">
+              Change <strong>{courseRenamePrompt.oldCourseName}</strong> to <strong>{courseRenamePrompt.updated.courseName}</strong> for all items in this course, or just this one?
+            </p>
+            <div className="rename-confirm-actions">
+              <button className="rename-confirm-btn primary" onClick={() => commitEdit(true)}>All items</button>
+              <button className="rename-confirm-btn secondary" onClick={() => commitEdit(false)}>Just this one</button>
+            </div>
           </div>
         </div>
       )}
@@ -1011,6 +918,8 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
       {paletteOpen && palettePopupPos && ReactDOM.createPortal(
         <div ref={palettePopupRef}>
           <PalettePopup
+            ref={paletteComponentRef}
+            onClose={() => setPaletteOpen(false)}
             style={{
               position: 'fixed',
               top: palettePopupPos.top,
