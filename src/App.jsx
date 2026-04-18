@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import ReactDOM from 'react-dom'
+import Tesseract from 'tesseract.js'
 import WeeklyView from './components/WeeklyView/WeeklyView'
 import MonthlyView from './components/MonthlyView/MonthlyView'
 import DetailView from './components/DetailView/DetailView'
@@ -184,14 +185,39 @@ export default function App() {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = evt => {
-      setImageForm({
-        imageUrl: evt.target.result,
-        items: [{ id: Date.now(), text: '', dateStr: '' }],
-      })
+    reader.onload = async evt => {
+      const imageUrl = evt.target.result
+      // Show modal immediately with loading state
+      setImageForm({ imageUrl, items: null })
+
+      try {
+        const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng')
+        const items = parseOcrLines(text)
+        setImageForm(f => f ? { ...f, items } : f)
+      } catch {
+        // OCR failed — fall back to one blank row
+        setImageForm(f => f ? { ...f, items: [{ id: Date.now(), text: '', dateStr: '' }] } : f)
+      }
     }
     reader.readAsDataURL(file)
     e.target.value = ''
+  }
+
+  function parseOcrLines(text) {
+    const lines = text
+      .split('\n')
+      .map(l => l
+        .trim()
+        // Strip common to-do list markers: bullets, checkboxes, dashes, numbers
+        .replace(/^[\-\•\*\–\—\○\□\☐\☑\✓\✗✔►▶]+\s*/, '')
+        .replace(/^\d+[\.\)]\s+/, '')
+        .trim()
+      )
+      .filter(l => l.length > 1)  // drop single chars / noise
+    const seen = new Set()
+    return lines
+      .filter(l => { if (seen.has(l)) return false; seen.add(l); return true })
+      .map((text, i) => ({ id: Date.now() + i, text, dateStr: '' }))
   }
 
   function addImageItem() {
@@ -392,33 +418,41 @@ export default function App() {
 
             {/* Item list */}
             <div className="img-form-fields">
-              <div className="img-form-items-header">
-                <span className="img-form-label">Items</span>
-                <span className="img-form-label" style={{ opacity: 0.5 }}>Due date (optional)</span>
-              </div>
-
-              {imageForm.items.map((item, i) => (
-                <div key={item.id} className="img-form-item-row">
-                  <input
-                    className="img-form-input img-form-item-name"
-                    placeholder={`Item ${i + 1}`}
-                    value={item.text}
-                    autoFocus={i === 0}
-                    onChange={e => updateImageItem(item.id, 'text', e.target.value)}
-                  />
-                  <input
-                    className="img-form-input img-form-item-date"
-                    type="date"
-                    value={item.dateStr}
-                    onChange={e => updateImageItem(item.id, 'dateStr', e.target.value)}
-                  />
-                  {imageForm.items.length > 1 && (
-                    <button className="img-item-remove" onClick={() => removeImageItem(item.id)} title="Remove">×</button>
-                  )}
+              {imageForm.items === null ? (
+                <div className="img-form-loading">
+                  <div className="img-form-spinner" />
+                  <span>Reading your list…</span>
                 </div>
-              ))}
+              ) : (
+                <>
+                  <div className="img-form-items-header">
+                    <span className="img-form-label">Items</span>
+                    <span className="img-form-label" style={{ opacity: 0.5 }}>Due date (optional)</span>
+                  </div>
 
-              <button className="img-item-add" onClick={addImageItem}>+ Add item</button>
+                  {imageForm.items.map((item, i) => (
+                    <div key={item.id} className="img-form-item-row">
+                      <input
+                        className="img-form-input img-form-item-name"
+                        placeholder={`Item ${i + 1}`}
+                        value={item.text}
+                        onChange={e => updateImageItem(item.id, 'text', e.target.value)}
+                      />
+                      <input
+                        className="img-form-input img-form-item-date"
+                        type="date"
+                        value={item.dateStr}
+                        onChange={e => updateImageItem(item.id, 'dateStr', e.target.value)}
+                      />
+                      {imageForm.items.length > 1 && (
+                        <button className="img-item-remove" onClick={() => removeImageItem(item.id)} title="Remove">×</button>
+                      )}
+                    </div>
+                  ))}
+
+                  <button className="img-item-add" onClick={addImageItem}>+ Add item</button>
+                </>
+              )}
             </div>
 
             {/* Actions */}
@@ -426,7 +460,7 @@ export default function App() {
               <button
                 className="img-form-btn primary"
                 onClick={handleImageTaskSubmit}
-                disabled={!imageForm.items.some(item => item.text.trim())}
+                disabled={!imageForm.items || !imageForm.items.some(item => item.text.trim())}
               >
                 Save to List
               </button>

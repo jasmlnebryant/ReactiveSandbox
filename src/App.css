@@ -187,8 +187,8 @@
 .img-form-fields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 22px 24px 10px;
+  gap: 10px;
+  padding: 20px 24px 10px;
 }
 
 .img-form-field {
@@ -231,19 +231,93 @@
   border-color: var(--color-6);
 }
 
-.img-form-textarea {
-  min-height: 66px;
-  resize: vertical;
-  line-height: 1.5;
+.img-form-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.img-form-date-row {
+.img-form-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-inner);
+  border-top-color: var(--color-6);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.img-form-items-header {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-inner);
+  margin-bottom: 2px;
+}
+
+.img-form-item-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.img-form-date { flex: 1.4; }
-.img-form-time { flex: 1; }
+.img-form-item-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.img-form-item-date {
+  flex: 0 0 140px;
+  font-size: 12px;
+}
+
+.img-item-remove {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.img-item-remove:hover {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--text-primary);
+}
+
+.img-item-add {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: inherit;
+  transition: color 0.12s;
+}
+
+.img-item-add:hover {
+  color: var(--text-primary);
+}
 
 .img-form-actions {
   display: flex;
