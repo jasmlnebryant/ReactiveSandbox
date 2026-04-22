@@ -183,6 +183,10 @@
   outline-offset: -1px;
 }
 
+.month-event.due-soon {
+  border-left: 2px solid var(--color-7);
+}
+
 .month-event-name {
   font-size: 9px;
   font-weight: 600;

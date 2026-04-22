@@ -38,6 +38,28 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthOffset, setMonthOffset] = useState(0)
+  const [settings, setSettings] = useState({
+    weekStartDay:   0,        // 0 = Sun, 1 = Mon
+    showCompleted:  true,
+    hiddenCourses:  [],
+    colorCodeBy:    'course', // 'course' | 'type'
+    dueSoonEnabled: true,
+    dueSoonDays:    3,
+  })
+
+  function updateSetting(key, value) {
+    setSettings(prev => ({ ...prev, [key]: value }))
+  }
+
+  // All unique course names across current assignments
+  const allCourseNames = [...new Set(assignments.map(a => a.courseName).filter(Boolean))].sort()
+
+  // Filtered view passed to calendar panels
+  const visibleAssignments = assignments.filter(a => {
+    if (!settings.showCompleted && a.completed) return false
+    if (settings.hiddenCourses.includes(a.courseName)) return false
+    return true
+  })
 
   // Selecting a card from a panel clears the day view
   function handleSelectItemFromPanel(item) {
@@ -45,10 +67,14 @@ export default function App() {
     if (item !== null) setSelectedDay(null)
   }
 
-  // Selecting a day overview (from "...") clears the selected item
+  // Selecting a day toggles it; clicking the same day again deselects
   function handleSelectDay(dayInfo) {
-    setSelectedDay(dayInfo)
-    setSelectedItem(null)
+    if (selectedDay && selectedDay.date.toDateString() === dayInfo.date.toDateString()) {
+      setSelectedDay(null)
+    } else {
+      setSelectedDay(dayInfo)
+      setSelectedItem(null)
+    }
   }
 
   // Selecting an item from within the day view keeps selectedDay intact
@@ -310,22 +336,24 @@ export default function App() {
         <div className="left-column">
           <div className="panel panel-weekly">
             <WeeklyView
-              assignments={assignments}
+              assignments={visibleAssignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
               onSelectDay={handleSelectDay}
               weekOffset={weekOffset}
               onWeekChange={setWeekOffset}
+              settings={settings}
             />
           </div>
           <div className="panel panel-monthly">
             <MonthlyView
-              assignments={assignments}
+              assignments={visibleAssignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
               monthOffset={monthOffset}
               onMonthChange={setMonthOffset}
               onSelectDay={handleSelectDay}
+              settings={settings}
             />
           </div>
         </div>
@@ -337,8 +365,9 @@ export default function App() {
             selectedDay={selectedDay}
             onSelectItem={handleSelectItemFromDay}
             onComplete={item => {
-              setAssignments(prev => prev.map(a => a.id === item.id ? { ...a, completed: true } : a))
-              setSelectedItem(null)
+              const toggled = !item.completed
+              setAssignments(prev => prev.map(a => a.id === item.id ? { ...a, completed: toggled } : a))
+              setSelectedItem(prev => prev ? { ...prev, completed: toggled } : null)
             }}
             onDelete={item => {
               setAssignments(prev => prev.filter(a => a.id !== item.id))
@@ -371,7 +400,91 @@ export default function App() {
             <span className="settings-popup-title">Settings</span>
           </div>
           <div className="settings-popup-body">
-            <p className="settings-coming-soon">More options coming soon.</p>
+
+            {/* ── Calendar section ── */}
+            <p className="settings-section-label">Calendar</p>
+
+            <div className="settings-row">
+              <span className="settings-row-label">Week starts on</span>
+              <div className="settings-segment">
+                <button
+                  className={`settings-segment-btn ${settings.weekStartDay === 0 ? 'active' : ''}`}
+                  onClick={() => updateSetting('weekStartDay', 0)}
+                >Sun</button>
+                <button
+                  className={`settings-segment-btn ${settings.weekStartDay === 1 ? 'active' : ''}`}
+                  onClick={() => updateSetting('weekStartDay', 1)}
+                >Mon</button>
+              </div>
+            </div>
+
+            <div className="settings-row">
+              <span className="settings-row-label">Show completed</span>
+              <button
+                className={`settings-toggle ${settings.showCompleted ? 'on' : ''}`}
+                onClick={() => updateSetting('showCompleted', !settings.showCompleted)}
+              ><span className="settings-toggle-knob" /></button>
+            </div>
+
+            <div className="settings-row">
+              <span className="settings-row-label">Due-soon highlight</span>
+              <button
+                className={`settings-toggle ${settings.dueSoonEnabled ? 'on' : ''}`}
+                onClick={() => updateSetting('dueSoonEnabled', !settings.dueSoonEnabled)}
+              ><span className="settings-toggle-knob" /></button>
+            </div>
+            {settings.dueSoonEnabled && (
+              <div className="settings-row settings-row-sub">
+                <span className="settings-row-label">Days threshold</span>
+                <div className="settings-day-input-wrap">
+                  <button className="settings-day-btn" onClick={() => updateSetting('dueSoonDays', Math.max(1, settings.dueSoonDays - 1))}>−</button>
+                  <span className="settings-day-count">{settings.dueSoonDays}</span>
+                  <button className="settings-day-btn" onClick={() => updateSetting('dueSoonDays', Math.min(14, settings.dueSoonDays + 1))}>+</button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Courses section ── */}
+            <p className="settings-section-label" style={{ marginTop: 14 }}>Courses</p>
+
+            <div className="settings-row">
+              <span className="settings-row-label">Color code by</span>
+              <div className="settings-segment">
+                <button
+                  className={`settings-segment-btn ${settings.colorCodeBy === 'course' ? 'active' : ''}`}
+                  onClick={() => updateSetting('colorCodeBy', 'course')}
+                >Course</button>
+                <button
+                  className={`settings-segment-btn ${settings.colorCodeBy === 'type' ? 'active' : ''}`}
+                  onClick={() => updateSetting('colorCodeBy', 'type')}
+                >Type</button>
+              </div>
+            </div>
+
+            {allCourseNames.length > 0 && (
+              <div className="settings-course-list">
+                {allCourseNames.map(name => {
+                  const hidden = settings.hiddenCourses.includes(name)
+                  return (
+                    <div key={name} className="settings-row">
+                      <span className="settings-row-label settings-course-name">{name}</span>
+                      <button
+                        className={`settings-toggle ${hidden ? '' : 'on'}`}
+                        onClick={() => updateSetting('hiddenCourses',
+                          hidden
+                            ? settings.hiddenCourses.filter(c => c !== name)
+                            : [...settings.hiddenCourses, name]
+                        )}
+                      ><span className="settings-toggle-knob" /></button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {allCourseNames.length === 0 && (
+              <p className="settings-empty-courses">Upload a syllabus to see courses here.</p>
+            )}
+
           </div>
         </div>,
         document.body

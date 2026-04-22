@@ -36,6 +36,29 @@
   --pad: 20px;
 }
 
+/* ─── Night mode overrides ────────────────────────────────── */
+html.night-mode {
+  --bg:            #1C1C1A;
+  --surface:       rgba(40, 40, 36, 0.7);
+  --surface-solid: #2A2A26;
+  --border:        rgba(255, 255, 255, 0.08);
+  --border-inner:  rgba(255, 255, 255, 0.07);
+  --blob-color:    #3A3A32;
+
+  --color-1: #2A2A26;
+  --color-2: #313130;
+  --color-6: #6B6E54;
+  --color-6-dark: #E8EAD8;
+
+  --text-primary:   #E8EAD8;
+  --text-secondary: #A0A090;
+  --text-tertiary:  #656558;
+}
+
+html.night-mode body {
+  background-color: var(--bg);
+}
+
 /* ─── Base ────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;

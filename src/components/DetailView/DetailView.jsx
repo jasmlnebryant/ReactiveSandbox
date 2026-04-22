@@ -94,7 +94,7 @@ function ColorRows({ colors, onChange }) {
 // ─── Palette popup ─────────────────────────────────────────
 // confirmMode: null | 'back' | 'close'  — distinguishes ‹ back vs click-outside
 const PalettePopup = React.forwardRef(function PalettePopup(
-  { palettes, activePaletteId, onSelect, onAdd, onUpdate, onClose, style }, ref
+  { palettes, activePaletteId, onSelect, onAdd, onUpdate, onClose, nightMode, onToggleNightMode, style }, ref
 ) {
   const [view, setView]             = React.useState('list')
   const [newName, setNewName]       = React.useState('My Palette')
@@ -276,6 +276,15 @@ const PalettePopup = React.forwardRef(function PalettePopup(
             </div>
           </div>
         ))}
+      </div>
+      <div className="palette-night-row">
+        <span className="palette-night-label">Night mode</span>
+        <button
+          className={`palette-night-toggle ${nightMode ? 'on' : ''}`}
+          onClick={onToggleNightMode}
+        >
+          <span className="palette-night-knob" />
+        </button>
       </div>
       <button className="palette-new-btn" onClick={() => setView('create')}>+ New Palette</button>
     </div>
@@ -494,6 +503,12 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
   const paletteRef          = React.useRef(null)   // button wrap
   const palettePopupRef     = React.useRef(null)   // popup wrapper div (for contains check)
   const paletteComponentRef = React.useRef(null)   // PalettePopup component (for tryClose)
+  const [nightMode, setNightMode] = React.useState(false)
+
+  // ── Apply / remove night mode CSS class on root ──
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('night-mode', nightMode)
+  }, [nightMode])
 
   // ── Grab the top-bar palette slot once the DOM is ready ──
   React.useEffect(() => {
@@ -784,7 +799,9 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
             )}
           </div>
           <div className="detail-actions">
-            <button className="detail-btn complete" onClick={() => onComplete?.(selectedItem)}>Mark Complete</button>
+            <button className="detail-btn complete" onClick={() => onComplete?.(selectedItem)}>
+              {selectedItem.completed ? 'Unmark Complete' : 'Mark Complete'}
+            </button>
             <button className="detail-btn delete"   onClick={() => onDelete?.(selectedItem)}>Delete</button>
           </div>
         </div>
@@ -920,6 +937,8 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
           <PalettePopup
             ref={paletteComponentRef}
             onClose={() => setPaletteOpen(false)}
+            nightMode={nightMode}
+            onToggleNightMode={() => setNightMode(n => !n)}
             style={{
               position: 'fixed',
               top: palettePopupPos.top,
