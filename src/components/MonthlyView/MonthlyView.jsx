@@ -57,7 +57,7 @@ function buildCalendar(year, month, weekStartDay) {
   return cells
 }
 
-export default function MonthlyView({ assignments = [], selectedItem, onSelectItem, monthOffset = 0, onMonthChange, onSelectDay, settings = {} }) {
+export default function MonthlyView({ assignments = [], allAssignments = assignments, selectedItem, onSelectItem, monthOffset = 0, onMonthChange, onSelectDay, settings = {} }) {
   const {
     weekStartDay   = 0,
     colorCodeBy    = 'course',
@@ -81,7 +81,7 @@ export default function MonthlyView({ assignments = [], selectedItem, onSelectIt
 
   const monthLabel = baseDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
 
-  const colorMap = buildColorMap(assignments, colorCodeBy)
+  const colorMap = buildColorMap(allAssignments, colorCodeBy)
 
   const byDay = {}
   assignments.forEach(a => {

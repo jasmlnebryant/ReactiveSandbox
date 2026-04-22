@@ -24,6 +24,48 @@ const DEFAULT_PALETTE = {
   ],
 }
 
+// ─── Dark (Navy) palette ──────────────────────────────────
+const DARK_PALETTE = {
+  id: 'dark',
+  name: 'Dark',
+  colors: [
+    { key: '--bg',           label: 'App Background',   value: '#0E1B2E' },
+    { key: '--color-1',      label: 'Card Surface',     value: '#162540' },
+    { key: '--color-2',      label: 'Today Highlight',  value: '#1C2E52' },
+    { key: '--color-3',      label: 'Event — Cool',     value: '#183448' },
+    { key: '--color-4',      label: 'Event — Pale',     value: '#241E42' },
+    { key: '--color-5',      label: 'Event — Warm',     value: '#2E2218' },
+    { key: '--color-6',      label: 'Primary Accent',   value: '#4D9EF5' },
+    { key: '--color-7',      label: 'Event — Tan',      value: '#33281A' },
+    { key: '--color-6-dark', label: 'Accent Text',      value: '#060E1C' },
+    { key: '--blob-color',   label: 'Background Blob',  value: '#162540' },
+    { key: '--text-primary',   label: 'Text — Primary',   value: '#EEF2FF' },
+    { key: '--text-secondary', label: 'Text — Secondary', value: '#A8C0DC' },
+    { key: '--text-tertiary',  label: 'Text — Tertiary',  value: '#6888A8' },
+  ],
+}
+
+// ─── Strawberry palette ────────────────────────────────────
+const STRAWBERRY_PALETTE = {
+  id: 'strawberry',
+  name: 'Strawberry',
+  colors: [
+    { key: '--bg',           label: 'App Background',   value: '#E2CECE' },
+    { key: '--color-1',      label: 'Card Surface',     value: '#F5E8E8' },
+    { key: '--color-2',      label: 'Today Highlight',  value: '#EDD8D8' },
+    { key: '--color-3',      label: 'Event — Cool',     value: '#E8D4D4' },
+    { key: '--color-4',      label: 'Event — Pale',     value: '#F5EFE0' },
+    { key: '--color-5',      label: 'Event — Warm',     value: '#F0E0E0' },
+    { key: '--color-6',      label: 'Primary Accent',   value: '#C97A7A' },
+    { key: '--color-7',      label: 'Event — Tan',      value: '#E8C4A0' },
+    { key: '--color-6-dark', label: 'Accent Text',      value: '#3D2020' },
+    { key: '--blob-color',   label: 'Background Blob',  value: '#C97A7A' },
+    { key: '--text-primary',   label: 'Text — Primary',   value: '#2B1F1F' },
+    { key: '--text-secondary', label: 'Text — Secondary', value: '#6B4545' },
+    { key: '--text-tertiary',  label: 'Text — Tertiary',  value: '#9E7070' },
+  ],
+}
+
 // ─── Pencil icon ───────────────────────────────────────────
 function PencilIcon() {
   return (
@@ -94,7 +136,7 @@ function ColorRows({ colors, onChange }) {
 // ─── Palette popup ─────────────────────────────────────────
 // confirmMode: null | 'back' | 'close'  — distinguishes ‹ back vs click-outside
 const PalettePopup = React.forwardRef(function PalettePopup(
-  { palettes, activePaletteId, onSelect, onAdd, onUpdate, onClose, nightMode, onToggleNightMode, style }, ref
+  { palettes, activePaletteId, onSelect, onAdd, onUpdate, onClose, style }, ref
 ) {
   const [view, setView]             = React.useState('list')
   const [newName, setNewName]       = React.useState('My Palette')
@@ -277,15 +319,6 @@ const PalettePopup = React.forwardRef(function PalettePopup(
           </div>
         ))}
       </div>
-      <div className="palette-night-row">
-        <span className="palette-night-label">Night mode</span>
-        <button
-          className={`palette-night-toggle ${nightMode ? 'on' : ''}`}
-          onClick={onToggleNightMode}
-        >
-          <span className="palette-night-knob" />
-        </button>
-      </div>
       <button className="palette-new-btn" onClick={() => setView('create')}>+ New Palette</button>
     </div>
   )
@@ -300,8 +333,17 @@ const WIDGET_DEFAULTS = {
   'todo':          { width: 194, height: 214 },
 }
 
+// Fixed width:height ratios — resize is locked to these
+const FIXED_RATIOS = {
+  'digital-clock': 182 / 100,   // 1.82 : 1
+  'analog-clock':  160 / 176,   // ~0.91 : 1
+}
+
 // ─── Widget: Digital Clock ─────────────────────────────────
-function DigitalClock() {
+const DIGITAL_DEFAULT_W = 182
+const DIGITAL_DEFAULT_H = 100
+
+function DigitalClock({ width = DIGITAL_DEFAULT_W, height = DIGITAL_DEFAULT_H }) {
   const [time, setTime] = React.useState(new Date())
   React.useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000)
@@ -313,20 +355,27 @@ function DigitalClock() {
   const m = String(time.getMinutes()).padStart(2, '0')
   const s = String(time.getSeconds()).padStart(2, '0')
   const dateStr = time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+  // Scale all sizes proportionally so content always fits with consistent padding
+  const scale = Math.min(width / DIGITAL_DEFAULT_W, height / DIGITAL_DEFAULT_H)
+
   return (
-    <div className="clock-widget">
-      <div className="clock-time">
-        <span className="clock-hm">{h}:{m}</span>
-        <span className="clock-seconds">{s}</span>
-        <span className="clock-ampm">{ampm}</span>
+    <div className="clock-widget" style={{ padding: `${16 * scale}px ${12 * scale}px`, gap: `${6 * scale}px` }}>
+      <div className="clock-time" style={{ gap: `${3 * scale}px` }}>
+        <span className="clock-hm"    style={{ fontSize: `${36 * scale}px` }}>{h}:{m}</span>
+        <span className="clock-seconds" style={{ fontSize: `${15 * scale}px` }}>{s}</span>
+        <span className="clock-ampm"  style={{ fontSize: `${12 * scale}px`, marginLeft: `${2 * scale}px` }}>{ampm}</span>
       </div>
-      <div className="clock-date">{dateStr}</div>
+      <div className="clock-date" style={{ fontSize: `${11 * scale}px` }}>{dateStr}</div>
     </div>
   )
 }
 
 // ─── Widget: Analog Clock ──────────────────────────────────
-function AnalogClock() {
+const ANALOG_DEFAULT_W = 160
+const ANALOG_DEFAULT_H = 176
+
+function AnalogClock({ width = ANALOG_DEFAULT_W, height = ANALOG_DEFAULT_H }) {
   const [time, setTime] = React.useState(new Date())
   React.useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000)
@@ -348,8 +397,12 @@ function AnalogClock() {
   const hr  = pt((h / 12) * 360 + (m / 60) * 30, 26)
   const min = pt((m / 60) * 360 + (s / 60) * 6,  34)
   const sec = pt((s / 60) * 360, 38)
+
+  const scale = Math.min(width / ANALOG_DEFAULT_W, height / ANALOG_DEFAULT_H)
+  const pad = 12 * scale
+
   return (
-    <div className="analog-clock-wrap">
+    <div className="analog-clock-wrap" style={{ padding: pad }}>
       <svg viewBox="0 0 100 100" className="analog-clock-svg">
         <circle cx={cx} cy={cy} r={44} fill="none" stroke="var(--border)" strokeWidth="1.5" />
         {ticks.map((t, i) => (
@@ -485,15 +538,19 @@ function DefaultClock() {
 }
 
 // ─── Main Component ────────────────────────────────────────
-export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, onRenameCourse, pendingTodoItems, onTodoConsumed }) {
+const ASSIGNMENT_TYPES = ['Homework', 'Exam', 'Quiz', 'Project', 'Reading', 'Essay', 'Lab', 'Other']
+
+export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, onRenameCourse, onAddItem, courseNames = [], professorNames = [], pendingTodoItems, onTodoConsumed }) {
   const [widgets, setWidgets]         = React.useState([])
   const [pickerOpen, setPickerOpen]   = React.useState(false)
-  const [palettes, setPalettes]           = React.useState([DEFAULT_PALETTE])
+  const [palettes, setPalettes]           = React.useState([DEFAULT_PALETTE, STRAWBERRY_PALETTE, DARK_PALETTE])
   const [activePaletteId, setActivePaletteId] = React.useState('default')
   const [paletteOpen, setPaletteOpen]     = React.useState(false)
   const [palettePopupPos, setPalettePopupPos] = React.useState(null)
   const [isEditing, setIsEditing]         = React.useState(false)
   const [editDraft, setEditDraft]         = React.useState(null)
+  const [addingTask, setAddingTask]       = React.useState(false)
+  const [addDraft, setAddDraft]           = React.useState(null)
   const [courseRenamePrompt, setCourseRenamePrompt] = React.useState(null)
   const [paletteSlot, setPaletteSlot]     = React.useState(null)
   const pickerRef      = React.useRef(null)
@@ -503,12 +560,6 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
   const paletteRef          = React.useRef(null)   // button wrap
   const palettePopupRef     = React.useRef(null)   // popup wrapper div (for contains check)
   const paletteComponentRef = React.useRef(null)   // PalettePopup component (for tryClose)
-  const [nightMode, setNightMode] = React.useState(false)
-
-  // ── Apply / remove night mode CSS class on root ──
-  React.useEffect(() => {
-    document.documentElement.classList.toggle('night-mode', nightMode)
-  }, [nightMode])
 
   // ── Grab the top-bar palette slot once the DOM is ready ──
   React.useEffect(() => {
@@ -520,6 +571,12 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
     setIsEditing(false)
     setEditDraft(null)
   }, [selectedItem?.id])
+
+  // ── Reset add-task form when selected day changes ──
+  React.useEffect(() => {
+    setAddingTask(false)
+    setAddDraft(null)
+  }, [selectedDay])
 
   // ── Consume pending todo items from image upload ──
   React.useEffect(() => {
@@ -608,6 +665,16 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
           const rect  = board?.getBoundingClientRect()
           const maxW  = rect ? rect.width  - w.x : 9999
           const maxH  = rect ? rect.height - w.y : 9999
+          const ratio = FIXED_RATIOS[w.type]
+          if (ratio) {
+            // Drive by whichever axis moved more, lock the other
+            const newW = Math.max(120, Math.min(maxW, startW + dx))
+            const newH = Math.max(60,  Math.min(maxH, startH + dy))
+            const byW  = newW
+            const byH  = newH * ratio
+            const width = Math.max(byW, byH)
+            return { ...w, width: Math.min(maxW, width), height: Math.min(maxH, width / ratio) }
+          }
           return {
             ...w,
             width:  Math.max(130, Math.min(maxW, startW + dx)),
@@ -730,6 +797,49 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
     setEditDraft(null)
   }
 
+  function startAdding() {
+    const d = selectedDay.date
+    const yr = d.getFullYear()
+    const mo = String(d.getMonth() + 1).padStart(2, '0')
+    const dy = String(d.getDate()).padStart(2, '0')
+    setAddDraft({
+      name: '', courseName: '', courseIsNew: false,
+      dueDateStr: `${yr}-${mo}-${dy}`, dueTimeStr: '',
+      type: '', typeIsNew: false,
+      professor: '', professorIsNew: false,
+      weight: '', instructions: '',
+    })
+    setAddingTask(true)
+  }
+
+  function saveAdd() {
+    if (!addDraft?.name.trim()) return
+    const timeVal = addDraft.dueTimeStr || ''
+    const dueDate = timeVal
+      ? new Date(`${addDraft.dueDateStr}T${timeVal}:00`)
+      : new Date(`${addDraft.dueDateStr}T12:00:00`)
+    onAddItem?.({
+      id: Date.now(),
+      name: addDraft.name.trim(),
+      courseName: addDraft.courseName.trim() || 'Personal',
+      dueDate,
+      dueTime: timeVal,
+      type: addDraft.type.trim() || 'Other',
+      professor: addDraft.professor.trim() || 'N/A',
+      weight: addDraft.weight.trim() || 'N/A',
+      instructions: addDraft.instructions.trim() || 'N/A',
+      completed: false,
+      color: 'var(--color-1)',
+    })
+    setAddingTask(false)
+    setAddDraft(null)
+  }
+
+  function cancelAdd() {
+    setAddingTask(false)
+    setAddDraft(null)
+  }
+
   const mode = selectedItem ? 'item' : selectedDay ? 'day' : 'idle'
 
   return (
@@ -746,6 +856,12 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
           >
             <PencilIcon />
           </button>
+        ) : mode === 'day' ? (
+          <button
+            className={`widget-add-btn ${addingTask ? 'open' : ''}`}
+            onClick={addingTask ? cancelAdd : startAdding}
+            title={addingTask ? 'Cancel' : 'Add item'}
+          >+</button>
         ) : (
           <div className="widget-add-wrap" ref={pickerRef}>
             <button
@@ -783,14 +899,18 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
               <span className="detail-field-label">Type</span>
               <span className="detail-field-value detail-type">{selectedItem.type}</span>
             </div>
-            <div className="detail-field">
-              <span className="detail-field-label">Professor</span>
-              <span className="detail-field-value">{selectedItem.professor || 'N/A'}</span>
-            </div>
-            <div className="detail-field">
-              <span className="detail-field-label">Weight</span>
-              <span className="detail-field-value">{selectedItem.weight || 'N/A'}</span>
-            </div>
+            {selectedItem.courseName?.toLowerCase() !== 'personal' && (
+              <div className="detail-field">
+                <span className="detail-field-label">Professor</span>
+                <span className="detail-field-value">{selectedItem.professor || 'N/A'}</span>
+              </div>
+            )}
+            {selectedItem.courseName?.toLowerCase() !== 'personal' && (
+              <div className="detail-field">
+                <span className="detail-field-label">Weight</span>
+                <span className="detail-field-value">{selectedItem.weight || 'N/A'}</span>
+              </div>
+            )}
             {selectedItem.instructions && selectedItem.instructions !== 'N/A' && (
               <div className="detail-field detail-field-full">
                 <span className="detail-field-label">Instructions</span>
@@ -879,7 +999,7 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
       )}
 
       {/* ── Day overview ── */}
-      {mode === 'day' && (
+      {mode === 'day' && !addingTask && (
         <div className="detail-day">
           <p className="detail-day-title">
             {selectedDay.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -897,6 +1017,161 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
                 <span className="detail-day-item-course">{item.courseName}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Add task form ── */}
+      {mode === 'day' && addingTask && addDraft && (
+        <div className="detail-content detail-edit-form">
+          <div className="edit-field">
+            <label className="edit-field-label">Assignment / Task Name</label>
+            <input
+              className="edit-input"
+              placeholder="e.g. Reading response"
+              autoFocus
+              value={addDraft.name}
+              onChange={e => setAddDraft(d => ({ ...d, name: e.target.value }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Course</label>
+            {courseNames.length > 0 && !addDraft.courseIsNew ? (
+              <select
+                className="edit-select"
+                value={addDraft.courseName}
+                onChange={e => {
+                  if (e.target.value === '__new__') {
+                    setAddDraft(d => ({ ...d, courseName: '', courseIsNew: true }))
+                  } else {
+                    setAddDraft(d => ({ ...d, courseName: e.target.value }))
+                  }
+                }}
+              >
+                <option value="">Select a course…</option>
+                {courseNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value="__new__">+ New course…</option>
+              </select>
+            ) : (
+              <div className="edit-course-row">
+                <input
+                  className="edit-input"
+                  placeholder="Course name"
+                  autoFocus={addDraft.courseIsNew}
+                  value={addDraft.courseName}
+                  onChange={e => setAddDraft(d => ({ ...d, courseName: e.target.value }))}
+                />
+                {courseNames.length > 0 && (
+                  <button
+                    className="edit-course-new-btn"
+                    onClick={() => setAddDraft(d => ({ ...d, courseName: '', courseIsNew: false }))}
+                  >← Back</button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Due Date</label>
+            <DateTimePicker
+              dateStr={addDraft.dueDateStr}
+              timeStr={addDraft.dueTimeStr}
+              onDateChange={v => setAddDraft(d => ({ ...d, dueDateStr: v }))}
+              onTimeChange={v => setAddDraft(d => ({ ...d, dueTimeStr: v }))}
+            />
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Type</label>
+            {!addDraft.typeIsNew ? (
+              <select
+                className="edit-select"
+                value={addDraft.type}
+                onChange={e => {
+                  if (e.target.value === '__new__') {
+                    setAddDraft(d => ({ ...d, type: '', typeIsNew: true }))
+                  } else {
+                    setAddDraft(d => ({ ...d, type: e.target.value }))
+                  }
+                }}
+              >
+                <option value="">Select a type…</option>
+                {ASSIGNMENT_TYPES.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+                <option value="__new__">+ Custom type…</option>
+              </select>
+            ) : (
+              <div className="edit-course-row">
+                <input
+                  className="edit-input"
+                  placeholder="Type name"
+                  autoFocus
+                  value={addDraft.type}
+                  onChange={e => setAddDraft(d => ({ ...d, type: e.target.value }))}
+                />
+                <button
+                  className="edit-course-new-btn"
+                  onClick={() => setAddDraft(d => ({ ...d, type: '', typeIsNew: false }))}
+                >← Back</button>
+              </div>
+            )}
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Professor</label>
+            {professorNames.length > 0 && !addDraft.professorIsNew ? (
+              <select
+                className="edit-select"
+                value={addDraft.professor}
+                onChange={e => {
+                  if (e.target.value === '__new__') {
+                    setAddDraft(d => ({ ...d, professor: '', professorIsNew: true }))
+                  } else {
+                    setAddDraft(d => ({ ...d, professor: e.target.value }))
+                  }
+                }}
+              >
+                <option value="">Select a professor…</option>
+                {professorNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value="__new__">+ New professor…</option>
+              </select>
+            ) : (
+              <div className="edit-course-row">
+                <input
+                  className="edit-input"
+                  placeholder="Optional"
+                  autoFocus={addDraft.professorIsNew}
+                  value={addDraft.professor}
+                  onChange={e => setAddDraft(d => ({ ...d, professor: e.target.value }))}
+                />
+                {professorNames.length > 0 && (
+                  <button
+                    className="edit-course-new-btn"
+                    onClick={() => setAddDraft(d => ({ ...d, professor: '', professorIsNew: false }))}
+                  >← Back</button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="edit-field">
+            <label className="edit-field-label">Weight</label>
+            <input
+              className="edit-input"
+              placeholder="Optional"
+              value={addDraft.weight}
+              onChange={e => setAddDraft(d => ({ ...d, weight: e.target.value }))}
+            />
+          </div>
+          <div className="detail-actions">
+            <button
+              className="detail-btn complete"
+              onClick={saveAdd}
+              disabled={!addDraft.name.trim()}
+              style={{ opacity: addDraft.name.trim() ? 1 : 0.45 }}
+            >Add Item</button>
+            <button className="detail-btn delete" onClick={cancelAdd}>Cancel</button>
           </div>
         </div>
       )}
@@ -937,8 +1212,6 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
           <PalettePopup
             ref={paletteComponentRef}
             onClose={() => setPaletteOpen(false)}
-            nightMode={nightMode}
-            onToggleNightMode={() => setNightMode(n => !n)}
             style={{
               position: 'fixed',
               top: palettePopupPos.top,
@@ -976,8 +1249,8 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
               </div>
               {/* Widget content */}
               <div className="widget-content">
-                {w.type === 'digital-clock' && <DigitalClock />}
-                {w.type === 'analog-clock'  && <AnalogClock />}
+                {w.type === 'digital-clock' && <DigitalClock width={w.width} height={w.height} />}
+                {w.type === 'analog-clock'  && <AnalogClock  width={w.width} height={w.height} />}
                 {w.type === 'image' && (
                   <MediaWidget data={w.data} onUpdate={d => updateWidgetData(w.id, d)} accept="image/*" label="Upload Image" />
                 )}

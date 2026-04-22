@@ -38,25 +38,26 @@
 
 /* ─── Night mode overrides ────────────────────────────────── */
 html.night-mode {
-  --bg:            #1C1C1A;
-  --surface:       rgba(40, 40, 36, 0.7);
-  --surface-solid: #2A2A26;
-  --border:        rgba(255, 255, 255, 0.08);
-  --border-inner:  rgba(255, 255, 255, 0.07);
-  --blob-color:    #3A3A32;
+  --bg:            #1A1A18;
+  --surface:       rgba(48, 48, 44, 0.75);
+  --surface-solid: #303030;
+  --border:        rgba(255, 255, 255, 0.10);
+  --border-inner:  rgba(255, 255, 255, 0.09);
+  --blob-color:    #2A2A26;
 
-  --color-1: #2A2A26;
-  --color-2: #313130;
-  --color-6: #6B6E54;
-  --color-6-dark: #E8EAD8;
+  --color-1: #2E2E2A;
+  --color-2: #363632;
+  --color-6: #7A7E60;
+  --color-6-dark: #ECEEE0;
 
-  --text-primary:   #E8EAD8;
-  --text-secondary: #A0A090;
-  --text-tertiary:  #656558;
+  --text-primary:   #F2F4E8;
+  --text-secondary: #D8DAC8;
+  --text-tertiary:  #B4B6A4;
 }
 
+html.night-mode,
 html.night-mode body {
-  background-color: var(--bg);
+  background-color: #1A1A18;
 }
 
 /* ─── Base ────────────────────────────────────────────────── */

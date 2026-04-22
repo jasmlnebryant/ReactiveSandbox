@@ -48,7 +48,7 @@ function formatRange(start, end) {
   return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`
 }
 
-export default function WeeklyView({ assignments = [], selectedItem, onSelectItem, onSelectDay, weekOffset = 0, onWeekChange, settings = {} }) {
+export default function WeeklyView({ assignments = [], allAssignments = assignments, selectedItem, onSelectItem, onSelectDay, weekOffset = 0, onWeekChange, settings = {} }) {
   const {
     weekStartDay   = 0,
     colorCodeBy    = 'course',
@@ -87,7 +87,7 @@ export default function WeeklyView({ assignments = [], selectedItem, onSelectIte
     }
   })
 
-  const colorMap = buildColorMap(assignments, colorCodeBy)
+  const colorMap = buildColorMap(allAssignments, colorCodeBy)
 
   const weekAssignments = assignments.filter(a => {
     const d = new Date(a.dueDate)

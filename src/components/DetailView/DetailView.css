@@ -1,4 +1,19 @@
 /* ─── Detail View ─────────────────────────────────────────── */
+/* Pin all text/surface tokens so detail panel text is always dark
+   and legible regardless of the active palette.                   */
+.detail-view {
+  --text-primary:   #2B2B26;
+  --text-secondary: #6B6B60;
+  --text-tertiary:  #9E9E90;
+  --color-6-dark:   #3B3C32;
+  --color-1:        #EEF1DE;
+  --color-2:        #E9ECCF;
+  --color-6:        #C3C7A6;
+  --color-7:        #D7C59F;
+  --surface-solid:  #FFFFFF;
+  --border-inner:   rgba(0, 0, 0, 0.06);
+}
+
 .detail-view {
   position: relative;
   display: flex;
@@ -567,6 +582,58 @@
   line-height: 1.5;
 }
 
+.edit-select {
+  background: var(--surface-solid);
+  border: 1px solid var(--border-inner);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239E9E90' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.edit-select:focus {
+  border-color: var(--color-6);
+}
+
+.edit-course-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-course-new-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-inner);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.edit-course-new-btn:hover {
+  background: var(--color-1);
+  border-color: var(--color-6);
+  color: var(--text-primary);
+}
+
 /* ─── Detail Actions ──────────────────────────────────────── */
 .detail-actions {
   display: flex;
@@ -778,6 +845,21 @@
   border-color: var(--color-6);
   color: var(--color-6-dark);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* ─── Palette Popup ───────────────────────────────────────── */
+/* Pin all text/surface tokens to default dark values so they're always
+   legible regardless of which palette (e.g. Dark) is active.          */
+.palette-popup {
+  --text-primary:   #2B2B26;
+  --text-secondary: #6B6B60;
+  --text-tertiary:  #9E9E90;
+  --color-6-dark:   #3B3C32;
+  --color-1:        #EEF1DE;
+  --color-2:        #E9ECCF;
+  --color-6:        #C3C7A6;
+  --surface-solid:  #FFFFFF;
+  --border-inner:   rgba(0, 0, 0, 0.06);
 }
 
 /* ─── Palette Popup ───────────────────────────────────────── */
@@ -1181,4 +1263,67 @@
 
 .palette-confirm-discard:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* ─── Night mode overrides ───────────────────────────────── */
+
+/* Palette-colored tag gets darkened so near-white text is readable */
+html.night-mode .detail-course-tag {
+  background-color: color-mix(in srgb, var(--tag-color, var(--color-1)) 45%, #1A1A18 55%);
+}
+
+/* Widget picker popup */
+html.night-mode .widget-picker {
+  background: rgba(36, 36, 32, 0.97);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html.night-mode .widget-picker-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Palette button */
+html.night-mode .palette-btn {
+  background: rgba(48, 48, 44, 0.9);
+}
+
+/* Palette popup */
+html.night-mode .palette-popup {
+  background: rgba(36, 36, 32, 0.97);
+}
+
+html.night-mode .palette-list-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html.night-mode .palette-list-item.active {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+html.night-mode .palette-color-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html.night-mode .palette-name-input,
+html.night-mode .palette-hex-input {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Rename confirm */
+html.night-mode .rename-confirm-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+html.night-mode .rename-confirm-card {
+  background: rgba(36, 36, 32, 0.97);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Palette unsaved-changes confirm */
+html.night-mode .palette-confirm-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+html.night-mode .palette-confirm-discard:hover {
+  background: rgba(255, 255, 255, 0.07);
 }

@@ -54,6 +54,11 @@ export default function App() {
   // All unique course names across current assignments
   const allCourseNames = [...new Set(assignments.map(a => a.courseName).filter(Boolean))].sort()
 
+  // All unique professor names (excluding placeholder N/A)
+  const allProfessorNames = [...new Set(
+    assignments.map(a => a.professor).filter(p => p && p !== 'N/A')
+  )].sort()
+
   // Filtered view passed to calendar panels
   const visibleAssignments = assignments.filter(a => {
     if (!settings.showCompleted && a.completed) return false
@@ -337,6 +342,7 @@ export default function App() {
           <div className="panel panel-weekly">
             <WeeklyView
               assignments={visibleAssignments}
+              allAssignments={assignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
               onSelectDay={handleSelectDay}
@@ -348,6 +354,7 @@ export default function App() {
           <div className="panel panel-monthly">
             <MonthlyView
               assignments={visibleAssignments}
+              allAssignments={assignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
               monthOffset={monthOffset}
@@ -382,6 +389,9 @@ export default function App() {
                 a.courseName === oldName ? { ...a, courseName: newName } : a
               ))
             }}
+            courseNames={allCourseNames}
+            professorNames={allProfessorNames}
+            onAddItem={item => setAssignments(prev => [...prev, item])}
             pendingTodoItems={pendingTodoItems}
             onTodoConsumed={() => setPendingTodoItems([])}
           />

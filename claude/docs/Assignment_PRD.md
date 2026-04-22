@@ -85,7 +85,74 @@ Layout must match sketch exactly (for now), color pallete cannot change unless t
 ---
 
 ## Mermaid Diagram
-*(Added after architecture is finalized)*
+classDiagram
+    class Assignment {
+        +String id
+        +String name
+        +String courseName
+        +String type
+        +String dueDate
+        +String dueTime
+        +String professor
+        +String weight
+        +Boolean completed
+        +String notes
+    }
+
+    class Palette {
+        +String id
+        +String name
+        +PaletteColor[] colors
+    }
+
+    class PaletteColor {
+        +String key
+        +String value
+    }
+
+    class Widget {
+        +String id
+        +String type
+        +Number x
+        +Number y
+        +Number width
+        +Number height
+    }
+
+    class TodoItem {
+        +String id
+        +String text
+        +Boolean completed
+    }
+
+    class Settings {
+        +Number weekStartDay
+        +String colorCodeBy
+        +Boolean dueSoonEnabled
+        +Number dueSoonDays
+    }
+
+    class DaySelection {
+        +Date date
+        +Assignment[] items
+    }
+
+    class AddDraft {
+        +String name
+        +String courseName
+        +String type
+        +String professor
+        +String weight
+        +String dueDate
+        +String dueTime
+        +Boolean courseIsNew
+        +Boolean typeIsNew
+        +Boolean professorIsNew
+    }
+
+    Palette "1" --> "1..*" PaletteColor : contains
+    DaySelection "1" --> "0..*" Assignment : references
+    AddDraft ..> Assignment : becomes
 
 ---
 

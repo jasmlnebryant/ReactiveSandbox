@@ -64,6 +64,21 @@
 }
 
 /* ── Settings popup ── */
+/* Pin tokens to default dark values so text is always legible
+   regardless of the active palette.                            */
+.settings-popup {
+  --text-primary:   #2B2B26;
+  --text-secondary: #6B6B60;
+  --text-tertiary:  #9E9E90;
+  --color-6-dark:   #3B3C32;
+  --color-1:        #EEF1DE;
+  --color-2:        #E9ECCF;
+  --color-6:        #C3C7A6;
+  --surface-solid:  #FFFFFF;
+  --border-inner:   rgba(0, 0, 0, 0.06);
+}
+
+/* ── Settings popup ── */
 .settings-popup {
   position: fixed;
   z-index: 9999;
@@ -551,6 +566,10 @@
   z-index: 0;
 }
 
+html.night-mode .bg-blobs {
+  opacity: 0.35;
+}
+
 @keyframes bg-blob-x {
   from { transform: translateX(0px); }
   to   { transform: translateX(-50px); }
@@ -940,4 +959,64 @@
   outline: none;
   width: 100%;
   min-width: 0;
+}
+
+/* ─── Night mode overrides ───────────────────────────────── */
+
+/* Top bar icon buttons */
+html.night-mode .topbar-icon-btn {
+  background: rgba(48, 48, 44, 0.9);
+}
+
+/* Settings popup */
+html.night-mode .settings-popup {
+  background: rgba(36, 36, 32, 0.97);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html.night-mode .settings-day-btn {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Upload menu */
+html.night-mode .upload-menu-popup {
+  background: rgba(36, 36, 32, 0.97);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html.night-mode .upload-menu-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Image upload form */
+html.night-mode .img-form-card {
+  background: rgba(36, 36, 32, 0.97);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html.night-mode .img-form-input {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+html.night-mode .img-form-btn.secondary {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+html.night-mode .img-form-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Default/welcome prompt */
+html.night-mode .default-overlay {
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+html.night-mode .default-prompt {
+  background: rgba(36, 36, 32, 0.94);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+/* Course rename inline input */
+html.night-mode .course-name-input {
+  background: rgba(255, 255, 255, 0.07);
 }

@@ -211,3 +211,12 @@
   font-size: 10px;
   color: var(--text-tertiary);
 }
+
+/* ─── Night mode overrides ───────────────────────────────── */
+html.night-mode .assignment-card {
+  background-color: color-mix(in srgb, var(--card-color, var(--color-1)) 45%, #1A1A18 55%);
+}
+
+html.night-mode .assignment-card.selected {
+  outline-color: rgba(200, 205, 170, 0.5);
+}

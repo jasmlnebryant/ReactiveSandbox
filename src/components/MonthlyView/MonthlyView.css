@@ -211,3 +211,12 @@
   width: 100%;
   pointer-events: none;
 }
+
+/* ─── Night mode overrides ───────────────────────────────── */
+html.night-mode .month-event {
+  background-color: color-mix(in srgb, var(--ev-color, var(--color-1)) 45%, #1A1A18 55%);
+}
+
+html.night-mode .month-event.selected {
+  outline-color: rgba(200, 205, 170, 0.5);
+}
