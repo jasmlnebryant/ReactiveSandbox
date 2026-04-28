@@ -165,9 +165,12 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-3) transparent;
 }
 
 .month-event {
@@ -183,9 +186,6 @@
   outline-offset: -1px;
 }
 
-.month-event.due-soon {
-  border-left: 2px solid var(--color-7);
-}
 
 .month-event-name {
   font-size: 9px;
@@ -197,20 +197,6 @@
   display: block;
 }
 
-/* ── More indicator ── */
-.month-more-btn {
-  display: block;
-  background: rgba(180, 180, 175, 0.28);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  padding: 2px 4px;
-  border-radius: 4px;
-  line-height: 1;
-  flex-shrink: 0;
-  width: 100%;
-  pointer-events: none;
-}
 
 /* ─── Night mode overrides ───────────────────────────────── */
 html.night-mode .month-event {

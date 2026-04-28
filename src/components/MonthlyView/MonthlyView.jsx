@@ -24,7 +24,6 @@ const TYPE_PALETTE = {
   other:    'var(--color-5)',
 }
 
-const MAX_VISIBLE = 2
 
 function buildColorMap(assignments, colorCodeBy) {
   const map = {}
@@ -61,14 +60,9 @@ export default function MonthlyView({ assignments = [], allAssignments = assignm
   const {
     weekStartDay   = 0,
     colorCodeBy    = 'course',
-    dueSoonEnabled = true,
-    dueSoonDays    = 3,
   } = settings
 
   const today = new Date()
-  const todayMidnight = new Date(today); todayMidnight.setHours(0,0,0,0)
-  const dueSoonThreshold = new Date(todayMidnight)
-  dueSoonThreshold.setDate(dueSoonThreshold.getDate() + dueSoonDays)
 
   const isCurrentMonth = monthOffset === 0
 
@@ -122,8 +116,6 @@ export default function MonthlyView({ assignments = [], allAssignments = assignm
           {cells.map((day, i) => {
             const isToday = day === today.getDate() && isCurrentMonth
             const events = day ? (byDay[day] || []) : []
-            const visibleEvents = events.slice(0, MAX_VISIBLE)
-            const hasMore = events.length > MAX_VISIBLE
 
             return (
               <div
@@ -135,15 +127,13 @@ export default function MonthlyView({ assignments = [], allAssignments = assignm
                   <>
                     <span className={`month-date-num ${isToday ? 'today-circle' : ''}`}>{day}</span>
                     <div className="month-cell-events">
-                      {visibleEvents.map(ev => {
+                      {events.map(ev => {
                         const color = colorMap[ev.id] || PALETTE[0]
                         const isSelected = selectedItem?.id === ev.id
-                        const dueDate = new Date(ev.dueDate)
-                        const isDueSoon = dueSoonEnabled && dueDate >= todayMidnight && dueDate <= dueSoonThreshold
                         return (
                           <div
                             key={ev.id}
-                            className={`month-event ${isSelected ? 'selected' : ''} ${ev.completed ? 'completed' : ''} ${isDueSoon ? 'due-soon' : ''}`}
+                            className={`month-event ${isSelected ? 'selected' : ''} ${ev.completed ? 'completed' : ''}`}
                             style={{ '--ev-color': color }}
                             onClick={e => { e.stopPropagation(); onSelectItem?.(isSelected ? null : ev) }}
                           >
@@ -151,9 +141,6 @@ export default function MonthlyView({ assignments = [], allAssignments = assignm
                           </div>
                         )
                       })}
-                      {hasMore && (
-                        <span className="month-more-btn">+{events.length - MAX_VISIBLE} more</span>
-                      )}
                     </div>
                   </>
                 )}

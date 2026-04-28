@@ -43,8 +43,6 @@ export default function App() {
     showCompleted:  true,
     hiddenCourses:  [],
     colorCodeBy:    'course', // 'course' | 'type'
-    dueSoonEnabled: true,
-    dueSoonDays:    3,
   })
 
   function updateSetting(key, value) {
@@ -342,6 +340,7 @@ export default function App() {
           <div className="panel panel-weekly">
             <WeeklyView
               assignments={visibleAssignments}
+              allAssignments={assignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
               weekOffset={weekOffset}
@@ -459,23 +458,6 @@ export default function App() {
               ><span className="settings-toggle-knob" /></button>
             </div>
 
-            <div className="settings-row">
-              <span className="settings-row-label">Due-soon highlight</span>
-              <button
-                className={`settings-toggle ${settings.dueSoonEnabled ? 'on' : ''}`}
-                onClick={() => updateSetting('dueSoonEnabled', !settings.dueSoonEnabled)}
-              ><span className="settings-toggle-knob" /></button>
-            </div>
-            {settings.dueSoonEnabled && (
-              <div className="settings-row settings-row-sub">
-                <span className="settings-row-label">Days threshold</span>
-                <div className="settings-day-input-wrap">
-                  <button className="settings-day-btn" onClick={() => updateSetting('dueSoonDays', Math.max(1, settings.dueSoonDays - 1))}>−</button>
-                  <span className="settings-day-count">{settings.dueSoonDays}</span>
-                  <button className="settings-day-btn" onClick={() => updateSetting('dueSoonDays', Math.min(14, settings.dueSoonDays + 1))}>+</button>
-                </div>
-              </div>
-            )}
 
 
             {/* ── Courses section ── */}

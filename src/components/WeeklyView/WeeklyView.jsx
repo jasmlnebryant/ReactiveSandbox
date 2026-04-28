@@ -49,6 +49,47 @@ function stripMeta(item) {
   return clean
 }
 
+// ─── Color palette (mirrors MonthlyView) ──────────────────
+const PALETTE = [
+  'var(--color-5)',
+  'var(--color-3)',
+  'var(--color-1)',
+  'var(--color-7)',
+  'var(--color-2)',
+  'var(--color-4)',
+  'var(--color-6)',
+]
+
+const TYPE_PALETTE = {
+  exam:     'var(--color-7)',
+  quiz:     'var(--color-3)',
+  homework: 'var(--color-5)',
+  project:  'var(--color-4)',
+  reading:  'var(--color-1)',
+  essay:    'var(--color-2)',
+  lab:      'var(--color-6)',
+  other:    'var(--color-5)',
+}
+
+function buildColorMap(assignments, colorCodeBy) {
+  const map = {}
+  if (colorCodeBy === 'type') {
+    assignments.forEach(a => {
+      const key = (a.type || 'other').toLowerCase()
+      map[a.id] = TYPE_PALETTE[key] || PALETTE[0]
+    })
+  } else {
+    const courseColors = {}
+    assignments.forEach(a => {
+      if (!courseColors[a.courseName]) {
+        courseColors[a.courseName] = PALETTE[Object.keys(courseColors).length % PALETTE.length]
+      }
+      map[a.id] = courseColors[a.courseName]
+    })
+  }
+  return map
+}
+
 // ─── Confetti colours ──────────────────────────────────────
 const CONFETTI_COLORS = [
   '#C3C7A6','#D7C59F','#D9E4E0','#F1F0C8','#ECE9BE','#EEF1DE','#E9ECCF',
@@ -111,6 +152,7 @@ function ConfettiBurst({ active }) {
 // ─── Main Component ────────────────────────────────────────
 export default function WeeklyProgressTracker({
   assignments = [],
+  allAssignments = assignments,
   selectedItem,
   onSelectItem,
   weekOffset = 0,
@@ -120,7 +162,8 @@ export default function WeeklyProgressTracker({
   onComplete,
   onDelete,
 }) {
-  const { weekStartDay = 0 } = settings
+  const { weekStartDay = 0, colorCodeBy = 'course' } = settings
+  const colorMap = buildColorMap(allAssignments, colorCodeBy)
 
   const [strikingKeys,   setStrikingKeys]  = React.useState(new Set())
   const [poppingKeys,    setPoppingKeys]   = React.useState(new Set())
@@ -344,11 +387,14 @@ export default function WeeklyProgressTracker({
                     const isPopping  = poppingKeys.has(String(item.id))
                     const isSelected = selectedItem?.id === item.id
 
+                    const itemColor = colorMap[item.id] || PALETTE[0]
+
                     if (item._kind === 'overdue') {
                       return (
                         <div
                           key={animKey}
                           className={`tracker-item overdue${isSelected ? ' selected' : ''}${isStriking ? ' striking' : ''}${isPopping ? ' popping' : ''}`}
+                          style={{ '--item-color': itemColor }}
                           onClick={() => !isStriking && !isPopping && setOverduePopup(item)}
                         >
                           <span className="tracker-item-name">{item.name}</span>
@@ -362,6 +408,7 @@ export default function WeeklyProgressTracker({
                         <div
                           key={animKey}
                           className={`tracker-item completed${isSelected ? ' selected' : ''}`}
+                          style={{ '--item-color': itemColor }}
                           onClick={() => handleSelectItem(item)}
                         >
                           <span className="tracker-item-name struck">{item.name}</span>
@@ -375,6 +422,7 @@ export default function WeeklyProgressTracker({
                       <div
                         key={animKey}
                         className={`tracker-item${item.completed ? ' completed' : ''}${isStriking ? ' striking' : ''}${isSelected ? ' selected' : ''}`}
+                        style={{ '--item-color': itemColor }}
                         onClick={() => handleSelectItem(item)}
                       >
                         <span className={`tracker-item-name${item.completed ? ' struck' : ''}`}>
