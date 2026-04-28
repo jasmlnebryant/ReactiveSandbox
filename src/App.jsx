@@ -45,6 +45,7 @@ export default function App() {
     colorCodeBy:    'course', // 'course' | 'type'
     dueSoonEnabled: true,
     dueSoonDays:    3,
+    proximityDays:  3,        // days after week end to show proximity items
   })
 
   function updateSetting(key, value) {
@@ -341,14 +342,18 @@ export default function App() {
         <div className="left-column">
           <div className="panel panel-weekly">
             <WeeklyView
-              assignments={visibleAssignments}
-              allAssignments={assignments}
+              assignments={assignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
-              onSelectDay={handleSelectDay}
               weekOffset={weekOffset}
               onWeekChange={setWeekOffset}
               settings={settings}
+              onUpdate={item => setAssignments(prev => prev.map(a => a.id === item.id ? item : a))}
+              onComplete={item => {
+                const toggled = !item.completed
+                setAssignments(prev => prev.map(a => a.id === item.id ? { ...a, completed: toggled } : a))
+              }}
+              onDelete={item => setAssignments(prev => prev.filter(a => a.id !== item.id))}
             />
           </div>
           <div className="panel panel-monthly">
@@ -392,6 +397,25 @@ export default function App() {
             courseNames={allCourseNames}
             professorNames={allProfessorNames}
             onAddItem={item => setAssignments(prev => [...prev, item])}
+            todoItems={assignments.filter(a => a.source === 'todo')}
+            onAddTodo={text => setAssignments(prev => [...prev, {
+              id: Date.now() + Math.random(),
+              name: text,
+              source: 'todo',
+              completed: false,
+              dueDate: new Date(),
+              dueTime: '',
+              courseName: 'Personal',
+              type: 'Task',
+              professor: 'N/A',
+              weight: 'N/A',
+              instructions: 'N/A',
+              color: 'var(--color-1)',
+            }])}
+            onToggleTodo={id => setAssignments(prev =>
+              prev.map(a => a.id === id ? { ...a, completed: !a.completed } : a)
+            )}
+            onDeleteTodo={id => setAssignments(prev => prev.filter(a => a.id !== id))}
             pendingTodoItems={pendingTodoItems}
             onTodoConsumed={() => setPendingTodoItems([])}
           />
@@ -453,6 +477,7 @@ export default function App() {
                 </div>
               </div>
             )}
+
 
             {/* ── Courses section ── */}
             <p className="settings-section-label" style={{ marginTop: 14 }}>Courses</p>

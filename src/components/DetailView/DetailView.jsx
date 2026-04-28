@@ -333,17 +333,8 @@ const WIDGET_DEFAULTS = {
   'todo':          { width: 194, height: 214 },
 }
 
-// Fixed width:height ratios — resize is locked to these
-const FIXED_RATIOS = {
-  'digital-clock': 182 / 100,   // 1.82 : 1
-  'analog-clock':  160 / 176,   // ~0.91 : 1
-}
-
 // ─── Widget: Digital Clock ─────────────────────────────────
-const DIGITAL_DEFAULT_W = 182
-const DIGITAL_DEFAULT_H = 100
-
-function DigitalClock({ width = DIGITAL_DEFAULT_W, height = DIGITAL_DEFAULT_H }) {
+function DigitalClock() {
   const [time, setTime] = React.useState(new Date())
   React.useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000)
@@ -356,26 +347,20 @@ function DigitalClock({ width = DIGITAL_DEFAULT_W, height = DIGITAL_DEFAULT_H })
   const s = String(time.getSeconds()).padStart(2, '0')
   const dateStr = time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  // Scale all sizes proportionally so content always fits with consistent padding
-  const scale = Math.min(width / DIGITAL_DEFAULT_W, height / DIGITAL_DEFAULT_H)
-
   return (
-    <div className="clock-widget" style={{ padding: `${16 * scale}px ${12 * scale}px`, gap: `${6 * scale}px` }}>
-      <div className="clock-time" style={{ gap: `${3 * scale}px` }}>
-        <span className="clock-hm"    style={{ fontSize: `${36 * scale}px` }}>{h}:{m}</span>
-        <span className="clock-seconds" style={{ fontSize: `${15 * scale}px` }}>{s}</span>
-        <span className="clock-ampm"  style={{ fontSize: `${12 * scale}px`, marginLeft: `${2 * scale}px` }}>{ampm}</span>
+    <div className="clock-widget">
+      <div className="clock-time">
+        <span className="clock-hm">{h}:{m}</span>
+        <span className="clock-seconds">{s}</span>
+        <span className="clock-ampm">{ampm}</span>
       </div>
-      <div className="clock-date" style={{ fontSize: `${11 * scale}px` }}>{dateStr}</div>
+      <div className="clock-date">{dateStr}</div>
     </div>
   )
 }
 
 // ─── Widget: Analog Clock ──────────────────────────────────
-const ANALOG_DEFAULT_W = 160
-const ANALOG_DEFAULT_H = 176
-
-function AnalogClock({ width = ANALOG_DEFAULT_W, height = ANALOG_DEFAULT_H }) {
+function AnalogClock() {
   const [time, setTime] = React.useState(new Date())
   React.useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000)
@@ -398,11 +383,8 @@ function AnalogClock({ width = ANALOG_DEFAULT_W, height = ANALOG_DEFAULT_H }) {
   const min = pt((m / 60) * 360 + (s / 60) * 6,  34)
   const sec = pt((s / 60) * 360, 38)
 
-  const scale = Math.min(width / ANALOG_DEFAULT_W, height / ANALOG_DEFAULT_H)
-  const pad = 12 * scale
-
   return (
-    <div className="analog-clock-wrap" style={{ padding: pad }}>
+    <div className="analog-clock-wrap">
       <svg viewBox="0 0 100 100" className="analog-clock-svg">
         <circle cx={cx} cy={cy} r={44} fill="none" stroke="var(--border)" strokeWidth="1.5" />
         {ticks.map((t, i) => (
@@ -446,32 +428,25 @@ function MediaWidget({ data, onUpdate, accept, label }) {
 }
 
 // ─── Widget: To-Do List ────────────────────────────────────
-function TodoWidget({ data, onUpdate }) {
+function TodoWidget({ items = [], onAdd, onToggle, onDelete }) {
   const [inputVal, setInputVal] = React.useState('')
-  const items = data.items || []
   function addItem() {
     const text = inputVal.trim()
     if (!text) return
-    onUpdate({ items: [...items, { id: Date.now(), text, done: false }] })
+    onAdd?.(text)
     setInputVal('')
-  }
-  function toggleItem(id) {
-    onUpdate({ items: items.map(it => it.id === id ? { ...it, done: !it.done } : it) })
-  }
-  function deleteItem(id) {
-    onUpdate({ items: items.filter(it => it.id !== id) })
   }
   return (
     <div className="todo-widget">
       {items.length > 0 && (
         <div className="todo-items">
           {items.map(item => (
-            <div key={item.id} className={`todo-item ${item.done ? 'done' : ''}`}>
-              <button className="todo-check" onClick={() => toggleItem(item.id)}>
-                {item.done ? '✓' : ''}
+            <div key={item.id} className={`todo-item ${item.completed ? 'done' : ''}`}>
+              <button className="todo-check" onClick={() => onToggle?.(item.id)}>
+                {item.completed ? '✓' : ''}
               </button>
-              <span className="todo-text">{item.text}</span>
-              <button className="todo-delete" onClick={() => deleteItem(item.id)}>×</button>
+              <span className="todo-text">{item.name}</span>
+              <button className="todo-delete" onClick={() => onDelete?.(item.id)}>×</button>
             </div>
           ))}
         </div>
@@ -540,7 +515,7 @@ function DefaultClock() {
 // ─── Main Component ────────────────────────────────────────
 const ASSIGNMENT_TYPES = ['Homework', 'Exam', 'Quiz', 'Project', 'Reading', 'Essay', 'Lab', 'Other']
 
-export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, onRenameCourse, onAddItem, courseNames = [], professorNames = [], pendingTodoItems, onTodoConsumed }) {
+export default function DetailView({ selectedItem, selectedDay, onSelectItem, onComplete, onDelete, onEdit, onRenameCourse, onAddItem, courseNames = [], professorNames = [], todoItems = [], onAddTodo, onToggleTodo, onDeleteTodo, pendingTodoItems, onTodoConsumed }) {
   const [widgets, setWidgets]         = React.useState([])
   const [pickerOpen, setPickerOpen]   = React.useState(false)
   const [palettes, setPalettes]           = React.useState([DEFAULT_PALETTE, STRAWBERRY_PALETTE, DARK_PALETTE])
@@ -581,26 +556,15 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
   // ── Consume pending todo items from image upload ──
   React.useEffect(() => {
     if (!pendingTodoItems?.length) return
-    const newItems = pendingTodoItems.map(item => ({
-      id: Date.now() + Math.random(),
-      text: item.text,
-      done: false,
-    }))
+    pendingTodoItems.forEach(item => onAddTodo?.(item.text))
+    // Ensure a todo widget exists so items are visible
     setWidgets(prev => {
-      const existing = prev.find(w => w.type === 'todo')
-      if (existing) {
-        return prev.map(w =>
-          w.type === 'todo'
-            ? { ...w, data: { items: [...(w.data.items || []), ...newItems] } }
-            : w
-        )
-      }
-      // No todo widget — create one
+      if (prev.find(w => w.type === 'todo')) return prev
       const maxZ = prev.length ? Math.max(...prev.map(w => w.z ?? 1)) : 0
       return [...prev, {
         id: Date.now(),
         type: 'todo',
-        data: { items: newItems },
+        data: {},
         x: 8, y: 8,
         width: 194, height: 214,
         z: maxZ + 1,
@@ -665,16 +629,6 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
           const rect  = board?.getBoundingClientRect()
           const maxW  = rect ? rect.width  - w.x : 9999
           const maxH  = rect ? rect.height - w.y : 9999
-          const ratio = FIXED_RATIOS[w.type]
-          if (ratio) {
-            // Drive by whichever axis moved more, lock the other
-            const newW = Math.max(120, Math.min(maxW, startW + dx))
-            const newH = Math.max(60,  Math.min(maxH, startH + dy))
-            const byW  = newW
-            const byH  = newH * ratio
-            const width = Math.max(byW, byH)
-            return { ...w, width: Math.min(maxW, width), height: Math.min(maxH, width / ratio) }
-          }
           return {
             ...w,
             width:  Math.max(130, Math.min(maxW, startW + dx)),
@@ -1249,8 +1203,8 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
               </div>
               {/* Widget content */}
               <div className="widget-content">
-                {w.type === 'digital-clock' && <DigitalClock width={w.width} height={w.height} />}
-                {w.type === 'analog-clock'  && <AnalogClock  width={w.width} height={w.height} />}
+                {w.type === 'digital-clock' && <DigitalClock />}
+                {w.type === 'analog-clock'  && <AnalogClock  />}
                 {w.type === 'image' && (
                   <MediaWidget data={w.data} onUpdate={d => updateWidgetData(w.id, d)} accept="image/*" label="Upload Image" />
                 )}
@@ -1258,7 +1212,12 @@ export default function DetailView({ selectedItem, selectedDay, onSelectItem, on
                   <MediaWidget data={w.data} onUpdate={d => updateWidgetData(w.id, d)} accept="image/gif" label="Upload GIF" />
                 )}
                 {w.type === 'todo' && (
-                  <TodoWidget data={w.data} onUpdate={d => updateWidgetData(w.id, d)} />
+                  <TodoWidget
+                    items={todoItems}
+                    onAdd={onAddTodo}
+                    onToggle={onToggleTodo}
+                    onDelete={onDeleteTodo}
+                  />
                 )}
               </div>
               {/* Resize handle */}
