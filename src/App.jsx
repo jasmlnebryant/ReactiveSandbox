@@ -45,7 +45,6 @@ export default function App() {
     colorCodeBy:    'course', // 'course' | 'type'
     dueSoonEnabled: true,
     dueSoonDays:    3,
-    proximityDays:  3,        // days after week end to show proximity items
   })
 
   function updateSetting(key, value) {
@@ -342,7 +341,7 @@ export default function App() {
         <div className="left-column">
           <div className="panel panel-weekly">
             <WeeklyView
-              assignments={assignments}
+              assignments={visibleAssignments}
               selectedItem={selectedItem}
               onSelectItem={handleSelectItemFromPanel}
               weekOffset={weekOffset}

@@ -46,7 +46,6 @@ function stripMeta(item) {
   const clean = { ...item }
   delete clean._kind
   delete clean._dateStr
-  delete clean._isDayDone
   return clean
 }
 
@@ -60,7 +59,6 @@ const CONFETTI_COLORS = [
 function ConfettiBurst({ active }) {
   const pieces = React.useMemo(() =>
     Array.from({ length: 55 }, (_, i) => {
-      // Each piece bursts upward then arcs down
       const spreadAngle = ((Math.random() - 0.5) * 160) * (Math.PI / 180)
       const peakDist  = 24 + Math.random() * 52
       const peakX     = Math.sin(spreadAngle) * peakDist
@@ -122,14 +120,13 @@ export default function WeeklyProgressTracker({
   onComplete,
   onDelete,
 }) {
-  const { weekStartDay = 0, dueSoonDays = 3 } = settings
+  const { weekStartDay = 0 } = settings
 
-  const [strikingKeys,    setStrikingKeys]   = React.useState(new Set())
-  const [poppingKeys,     setPoppingKeys]    = React.useState(new Set())
-  const [celebratingBar,  setCelebratingBar] = React.useState(false)
-  const [showAllDone,     setShowAllDone]    = React.useState(false)
-  const [proximityPopup,  setProximityPopup] = React.useState(null)
-  const [overduePopup,    setOverduePopup]   = React.useState(null)
+  const [strikingKeys,   setStrikingKeys]  = React.useState(new Set())
+  const [poppingKeys,    setPoppingKeys]   = React.useState(new Set())
+  const [celebratingBar, setCelebratingBar] = React.useState(false)
+  const [showAllDone,    setShowAllDone]   = React.useState(false)
+  const [overduePopup,   setOverduePopup]  = React.useState(null)
   const prevPct         = React.useRef(0)
   const celebratedWeeks = React.useRef(new Set())
 
@@ -148,16 +145,12 @@ export default function WeeklyProgressTracker({
   weekEnd.setHours(23, 59, 59, 999)
   const isCurrentWeek = weekOffset === 0
 
-  const proximityEnd = new Date(weekEnd)
-  proximityEnd.setDate(proximityEnd.getDate() + dueSoonDays)
-
   // ── Per-day item lists ──
   const dayItems = weekDates.map(date => {
     const dateStr = toDateStr(date)
     const items = []
 
     assignments.forEach(item => {
-      if (item.proximityDismissed) return
       const due = getDueDate(item)
 
       // No due date → show in today's column (current week only)
@@ -186,21 +179,6 @@ export default function WeeklyProgressTracker({
         return
       }
 
-      // Accepted proximity items: repeat each day from earlyStartDate through week end
-      if (item.proximityAccepted && item.earlyStartDate && !item.completed) {
-        const earlyStart = new Date(item.earlyStartDate); earlyStart.setHours(0, 0, 0, 0)
-        const spanStart = earlyStart >= weekStart ? earlyStart : weekStart
-        if (date >= spanStart && date <= weekEnd) {
-          items.push({
-            ...item,
-            _kind: 'accepted',
-            _dateStr: dateStr,
-            _isDayDone: !!(item.dailyCompletions?.[dateStr]),
-          })
-        }
-        return
-      }
-
       // Regular items due this week
       if (!item.completed && dueMid >= weekStart && dueMid <= weekEnd) {
         if (isSameDay(dueMid, date)) {
@@ -212,23 +190,13 @@ export default function WeeklyProgressTracker({
     return { date, dateStr, items }
   })
 
-  // Proximity items: due after week ends, within dueSoonDays, not yet accepted/dismissed
-  const proximityItems = assignments.filter(item => {
-    if (item.proximityAccepted || item.proximityDismissed || item.completed) return false
-    const due = getDueDate(item)
-    if (!due) return false
-    const dueMid = new Date(due); dueMid.setHours(0, 0, 0, 0)
-    return dueMid > weekEnd && dueMid <= proximityEnd
-  })
-
   // ── Progress totals ──
   let totalSlots = 0, completedSlots = 0
   dayItems.forEach(({ items }) => {
     items.forEach(item => {
-      if      (item._kind === 'overdue')    { totalSlots++ }
-      else if (item._kind === 'completed')  { totalSlots++; completedSlots++ }
-      else if (item._kind === 'regular')    { totalSlots++; if (item.completed) completedSlots++ }
-      else if (item._kind === 'accepted')   { totalSlots++; if (item._isDayDone) completedSlots++ }
+      if      (item._kind === 'overdue')   { totalSlots++ }
+      else if (item._kind === 'completed') { totalSlots++; completedSlots++ }
+      else if (item._kind === 'regular')   { totalSlots++; if (item.completed) completedSlots++ }
     })
   })
 
@@ -240,7 +208,6 @@ export default function WeeklyProgressTracker({
       if      (item._kind === 'overdue')   { t++ }
       else if (item._kind === 'completed') { t++; c++ }
       else if (item._kind === 'regular')   { t++; if (item.completed) c++ }
-      else if (item._kind === 'accepted')  { t++; if (item._isDayDone) c++ }
     })
     return { t, c, pct: t === 0 ? 0 : Math.round((c / t) * 100) }
   })
@@ -251,7 +218,6 @@ export default function WeeklyProgressTracker({
     if (overallPct === 100 && totalSlots > 0) {
       setShowAllDone(true)
       if (!alreadyCelebrated) {
-        // First time this week hits 100% — play the full animation
         celebratedWeeks.current.add(weekOffset)
         setCelebratingBar(true)
         setTimeout(() => setCelebratingBar(false), 2200)
@@ -259,7 +225,6 @@ export default function WeeklyProgressTracker({
     }
     if (overallPct < 100) {
       setShowAllDone(false)
-      // If items are un-completed, allow re-celebrating when they finish again
       celebratedWeeks.current.delete(weekOffset)
     }
     prevPct.current = overallPct
@@ -288,28 +253,6 @@ export default function WeeklyProgressTracker({
     onSelectItem?.(selectedItem?.id === clean.id ? null : clean)
   }
 
-  function handleCheckDayInstance(e, item) {
-    e.stopPropagation()
-    const key = `${item.id}-${item._dateStr}`
-    triggerStrike(key, () => {
-      const updated = {
-        ...stripMeta(item),
-        dailyCompletions: { ...(item.dailyCompletions || {}), [item._dateStr]: true },
-      }
-      onUpdate?.(updated)
-    })
-  }
-
-  function handleProximityAccept(item) {
-    setProximityPopup(null)
-    onUpdate?.({ ...item, proximityAccepted: true, earlyStartDate: toDateStr(today) })
-  }
-
-  function handleProximityDecline(item) {
-    setProximityPopup(null)
-    triggerPop(String(item.id), () => onUpdate?.({ ...item, proximityDismissed: true }))
-  }
-
   function handleOverdueYes(item) {
     setOverduePopup(null)
     triggerStrike(`${item.id}-${item._dateStr}`, () => onComplete?.(stripMeta(item)))
@@ -320,7 +263,7 @@ export default function WeeklyProgressTracker({
     triggerPop(String(item.id), () => onDelete?.(stripMeta(item)))
   }
 
-  const emptyWeek = totalSlots === 0 && proximityItems.length === 0
+  const emptyWeek = totalSlots === 0
 
   return (
     <div className="weekly-view">
@@ -350,7 +293,7 @@ export default function WeeklyProgressTracker({
             {totalSlots === 0 ? '—' : `${completedSlots} / ${totalSlots}`}
           </span>
         </div>
-        <div className={`progress-bar-wrap`}>
+        <div className="progress-bar-wrap">
           <div className={`progress-bar-track ${celebratingBar ? 'celebrate' : ''}`}>
             <div
               className="progress-bar-fill"
@@ -364,172 +307,104 @@ export default function WeeklyProgressTracker({
         )}
       </div>
 
-      {/* ── Scrollable body: grid + proximity ── */}
+      {/* ── Scrollable body: grid ── */}
       <div className="tracker-body">
 
-      {/* ── Day columns ── */}
-      <div className={`tracker-grid${showAllDone ? ' all-done' : ''}`} style={{ position: 'relative' }}>
-        {dayItems.map(({ date, dateStr, items }, i) => {
-          const dp      = dayProgress[i]
-          const isToday = isSameDay(date, today)
-          const isPast  = date < today && !isToday
+        {/* ── Day columns ── */}
+        <div className={`tracker-grid${showAllDone ? ' all-done' : ''}`} style={{ position: 'relative' }}>
+          {dayItems.map(({ date, dateStr, items }, i) => {
+            const dp      = dayProgress[i]
+            const isToday = isSameDay(date, today)
+            const isPast  = date < today && !isToday
 
-          return (
-            <div
-              key={dateStr}
-              className={`tracker-day ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}`}
-            >
-              <div className="tracker-day-header">
-                <span className="tracker-day-label">
-                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                </span>
-                <span className={`tracker-day-num ${isToday ? 'today-dot' : ''}`}>
-                  {date.getDate()}
-                </span>
-                <div className="tracker-day-bar-track">
-                  <div
-                    className="tracker-day-bar-fill"
-                    style={{ width: dp.t === 0 ? '0%' : `${dp.pct}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="tracker-day-items">
-                {items.map(item => {
-                  const animKey    = `${item.id}-${dateStr}`
-                  const isStriking = strikingKeys.has(animKey)
-                  const isPopping  = poppingKeys.has(String(item.id))
-                  const isSelected = selectedItem?.id === item.id
-
-                  if (item._kind === 'overdue') {
-                    return (
-                      <div
-                        key={animKey}
-                        className={`tracker-item overdue${isSelected ? ' selected' : ''}${isStriking ? ' striking' : ''}${isPopping ? ' popping' : ''}`}
-                        onClick={() => !isStriking && !isPopping && setOverduePopup(item)}
-                      >
-                        <span className="tracker-item-name">{item.name}</span>
-                        <span className="tracker-item-sub">{item.courseName}</span>
-                      </div>
-                    )
-                  }
-
-                  if (item._kind === 'completed') {
-                    return (
-                      <div
-                        key={animKey}
-                        className={`tracker-item completed${isSelected ? ' selected' : ''}`}
-                        onClick={() => handleSelectItem(item)}
-                      >
-                        <span className="tracker-item-name struck">{item.name}</span>
-                        <span className="tracker-item-sub">{item.courseName}</span>
-                      </div>
-                    )
-                  }
-
-                  if (item._kind === 'accepted') {
-                    const isDone = item._isDayDone
-                    return (
-                      <div
-                        key={animKey}
-                        className={`tracker-item accepted${isDone ? ' day-done' : ''}${isStriking ? ' striking' : ''}${isSelected ? ' selected' : ''}`}
-                        onClick={() => handleSelectItem(item)}
-                      >
-                        <span className="tracker-item-name">{item.name}</span>
-                        <span className="tracker-item-sub">{item.courseName}</span>
-                        {!isDone && !isStriking && (
-                          <button
-                            className="tracker-day-check-btn"
-                            onClick={e => handleCheckDayInstance(e, item)}
-                            title="Mark today complete"
-                          >✓</button>
-                        )}
-                        {isDone && <span className="tracker-check">✓</span>}
-                      </div>
-                    )
-                  }
-
-                  // Regular
-                  return (
-                    <div
-                      key={animKey}
-                      className={`tracker-item${item.completed ? ' completed' : ''}${isStriking ? ' striking' : ''}${isSelected ? ' selected' : ''}`}
-                      onClick={() => handleSelectItem(item)}
-                    >
-                      <span className={`tracker-item-name${item.completed ? ' struck' : ''}`}>
-                        {item.name}
-                      </span>
-                      <span className="tracker-item-sub">{item.courseName}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
-        {/* ── All done overlay — inside grid so bar stays unblurred ── */}
-        {showAllDone && (
-          <div className="all-done-overlay">
-            <p className="all-done-text">All done for the week!</p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Proximity section — always visible ── */}
-      <div className="proximity-section">
-        <span className="proximity-section-label">
-          Coming Up <span className="proximity-window-hint">({dueSoonDays}d after this week)</span>
-        </span>
-        {proximityItems.length === 0 ? (
-          <p className="proximity-empty">Nothing due within {dueSoonDays} days of this week.</p>
-        ) : (
-          <div className="proximity-items">
-            {proximityItems.map(item => {
-              const isPopping = poppingKeys.has(String(item.id))
-              const due = getDueDate(item)
-              return (
-                <div
-                  key={item.id}
-                  className={`tracker-item proximity${isPopping ? ' popping' : ''}`}
-                  onClick={() => !isPopping && setProximityPopup(item)}
-                >
-                  <span className="tracker-item-name">{item.name}</span>
-                  <span className="tracker-item-sub">
-                    {item.courseName}
-                    {due && ` · due ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            return (
+              <div
+                key={dateStr}
+                className={`tracker-day ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}`}
+              >
+                <div className="tracker-day-header">
+                  <span className="tracker-day-label">
+                    {date.toLocaleDateString('en-US', { weekday: 'short' })}
                   </span>
+                  <span className={`tracker-day-num ${isToday ? 'today-dot' : ''}`}>
+                    {date.getDate()}
+                  </span>
+                  <div className="tracker-day-bar-track">
+                    <div
+                      className="tracker-day-bar-fill"
+                      style={{ width: dp.t === 0 ? '0%' : `${dp.pct}%` }}
+                    />
+                  </div>
                 </div>
-              )
-            })}
+
+                <div className="tracker-day-items">
+                  {items.map(item => {
+                    const animKey    = `${item.id}-${dateStr}`
+                    const isStriking = strikingKeys.has(animKey)
+                    const isPopping  = poppingKeys.has(String(item.id))
+                    const isSelected = selectedItem?.id === item.id
+
+                    if (item._kind === 'overdue') {
+                      return (
+                        <div
+                          key={animKey}
+                          className={`tracker-item overdue${isSelected ? ' selected' : ''}${isStriking ? ' striking' : ''}${isPopping ? ' popping' : ''}`}
+                          onClick={() => !isStriking && !isPopping && setOverduePopup(item)}
+                        >
+                          <span className="tracker-item-name">{item.name}</span>
+                          <span className="tracker-item-sub">{item.courseName}</span>
+                        </div>
+                      )
+                    }
+
+                    if (item._kind === 'completed') {
+                      return (
+                        <div
+                          key={animKey}
+                          className={`tracker-item completed${isSelected ? ' selected' : ''}`}
+                          onClick={() => handleSelectItem(item)}
+                        >
+                          <span className="tracker-item-name struck">{item.name}</span>
+                          <span className="tracker-item-sub">{item.courseName}</span>
+                        </div>
+                      )
+                    }
+
+                    // Regular
+                    return (
+                      <div
+                        key={animKey}
+                        className={`tracker-item${item.completed ? ' completed' : ''}${isStriking ? ' striking' : ''}${isSelected ? ' selected' : ''}`}
+                        onClick={() => handleSelectItem(item)}
+                      >
+                        <span className={`tracker-item-name${item.completed ? ' struck' : ''}`}>
+                          {item.name}
+                        </span>
+                        <span className="tracker-item-sub">{item.courseName}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+
+          {/* ── All done overlay — inside grid so bar stays unblurred ── */}
+          {showAllDone && (
+            <div className="all-done-overlay">
+              <p className="all-done-text">All done for the week!</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Empty state ── */}
+        {emptyWeek && (
+          <div className="tracker-empty">
+            <p className="tracker-empty-text">Nothing due this week.</p>
           </div>
         )}
-      </div>
-
-      {/* ── Empty state ── */}
-      {emptyWeek && (
-        <div className="tracker-empty">
-          <p className="tracker-empty-text">Nothing due this week.</p>
-        </div>
-      )}
 
       </div>{/* end tracker-body */}
-
-      {/* ── Proximity popup ── */}
-      {proximityPopup && (
-        <div className="tracker-popup-overlay" onClick={() => setProximityPopup(null)}>
-          <div className="tracker-popup" onClick={e => e.stopPropagation()}>
-            <p className="tracker-popup-title">Start working on this early?</p>
-            <p className="tracker-popup-name">"{proximityPopup.name}"</p>
-            <p className="tracker-popup-sub">
-              Due {getDueDate(proximityPopup)?.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-            </p>
-            <div className="tracker-popup-actions">
-              <button className="tracker-popup-btn yes" onClick={() => handleProximityAccept(proximityPopup)}>Yes, let's go</button>
-              <button className="tracker-popup-btn no"  onClick={() => handleProximityDecline(proximityPopup)}>Not yet</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Overdue popup ── */}
       {overduePopup && (

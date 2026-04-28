@@ -347,30 +347,6 @@
 }
 .tracker-item.selected:hover { opacity: 1; }
 
-/* ── Day-check button on accepted items ── */
-.tracker-day-check-btn {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  translate: 0 -50%;
-  background: var(--color-6);
-  color: var(--color-6-dark);
-  border: none;
-  border-radius: 4px;
-  font-size: 8px;
-  font-weight: 700;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-.tracker-item.accepted:hover .tracker-day-check-btn { opacity: 1; }
-
 /* ── Strikethrough animation ── */
 .tracker-item.striking { cursor: default; }
 .tracker-item.striking:hover { opacity: 1; }
@@ -410,27 +386,6 @@
 .tracker-item.overdue .tracker-item-name { color: #c03030; }
 .tracker-item.overdue .tracker-item-sub  { color: rgba(180,50,50,0.65); }
 
-/* ── Accepted proximity item ── */
-.tracker-item.accepted {
-  background: var(--color-2);
-  border-left: 2px solid var(--color-6);
-}
-.tracker-item.accepted.day-done {
-  opacity: 0.5;
-  cursor: default;
-}
-.tracker-item.accepted.day-done:hover { opacity: 0.5; }
-
-.tracker-check {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--color-6-dark);
-  position: absolute;
-  right: 5px;
-  top: 50%;
-  translate: 0 -50%;
-}
-
 /* ── Bubble-pop animation ── */
 .tracker-item.popping {
   animation: bubble-pop 0.5s cubic-bezier(0.4, 0, 0.6, 1) forwards;
@@ -443,55 +398,6 @@
   60%  { transform: scale(0.92); opacity: 0.6; }
   100% { transform: scale(0);    opacity: 0; }
 }
-
-/* ── Proximity items section ── */
-.proximity-section {
-  border-top: 1px solid var(--border-inner);
-  padding: 8px 10px;
-  flex-shrink: 0;
-  max-height: 100px;
-  overflow-y: auto;
-}
-
-.proximity-section-label {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-tertiary);
-  display: block;
-  margin-bottom: 5px;
-}
-
-.proximity-window-hint {
-  font-weight: 400;
-  opacity: 0.6;
-  font-size: 8px;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.proximity-empty {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  margin: 4px 0 0;
-  font-style: italic;
-}
-
-.proximity-items {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 4px;
-}
-
-/* ── Proximity item appearance ── */
-.tracker-item.proximity {
-  opacity: 0.45;
-  background: var(--color-1);
-  border: 1.5px dashed var(--color-6);
-}
-.tracker-item.proximity:hover { opacity: 0.65; }
 
 /* ── Empty state ── */
 .tracker-empty {
